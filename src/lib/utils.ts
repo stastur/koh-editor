@@ -69,3 +69,30 @@ export function isCloseToPolyline(p: Point, polyline: Point[], delta = 5) {
 export function toTuple({ x, y }: Point) {
   return [x, y] satisfies RoughPoint;
 }
+
+export function middlePoint(l: Line) {
+  const [s, e] = l;
+
+  const x = s.x + 0.5 * (e.x - s.x);
+  const y = s.y + 0.5 * (e.y - s.y);
+
+  return { x, y };
+}
+
+export function distortLine(l: Line, times = 4): Point[] {
+  if (times === 0) {
+    return l;
+  }
+
+  const [s, e] = l;
+
+  const middle = middlePoint(l);
+
+  middle.x += Math.random() * 5 - 5;
+  middle.y += Math.random() * 5 - 5;
+
+  return [
+    ...distortLine([s, middle], times - 1),
+    ...distortLine([middle, e], times - 1),
+  ];
+}
