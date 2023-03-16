@@ -2,14 +2,14 @@
   import r from "roughjs";
   import type { RoughCanvas } from "roughjs/bin/canvas";
   import { onMount } from "svelte";
-  import { type Point, points, selection } from "./store";
-  import { distance } from "./utils";
+  import { activeTool, type Point } from "./store";
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
   let height = 1024;
   let width = 1024;
 
+  let cursorPosition = { x: 0, y: 0 };
   let rc: RoughCanvas;
 
   onMount(() => {
@@ -21,7 +21,7 @@
     rc = r.canvas(canvas, { options: { seed: 420, roughness: 0 } });
   });
 
-  const projectPoint = (
+  const toScene = (
     p: Point,
     target: { width: number; height: number },
     source: { width: number; height: number }
@@ -38,73 +38,32 @@
   };
 
   const toCanvas = (p: Point) =>
-    projectPoint(p, canvas, canvas.getBoundingClientRect());
+    toScene(p, canvas, canvas.getBoundingClientRect());
 
   const fromCanvas = (p: Point) =>
-    projectPoint(p, canvas.getBoundingClientRect(), canvas);
-
-  let dragging = false;
-  let hoveredPointIndex = -1;
+    toScene(p, canvas.getBoundingClientRect(), canvas);
 
   $: handleMove = (e: MouseEvent) => {
-    const cursor = toCanvas({ x: e.offsetX, y: e.offsetY });
-    hoveredPointIndex = $points.findIndex((p) => distance(cursor, p) < 10);
+    cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
+  };
 
-    if (dragging) {
-      $points[hoveredPointIndex] = cursor;
+  $: handleClick = (e: MouseEvent) => {
+    if ($activeTool === "select") {
     }
-  };
-
-  const resetSelection = () => {
-    $selection = -1;
-  };
-
-  const selectHoveredPoint = () => {
-    $selection = hoveredPointIndex;
-  };
-
-  const createPointOnClick = (e: MouseEvent) => {
-    const p = toCanvas({ x: e.offsetX, y: e.offsetY });
-
-    if (hoveredPointIndex === -1 && $selection === -1) {
-      $points = [...$points, p];
-      hoveredPointIndex = $points.length;
-    } else {
-      resetSelection();
+    if ($activeTool === "position") {
     }
-  };
-
-  $: if (ctx) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    $points.forEach((p, i) => {
-      rc.circle(p.x, p.y, 10, {
-        stroke:
-          i === hoveredPointIndex || i === $selection ? "blue" : undefined,
-      });
-    });
-  }
-
-  const startDragging = () => {
-    if (hoveredPointIndex !== -1) {
-      dragging = true;
+    if ($activeTool === "arc") {
     }
-  };
-
-  const endDragging = () => {
-    dragging = false;
+    if ($activeTool === "polygon") {
+    }
   };
 </script>
 
 <div class="h-fill m-2 relative border-black border-2">
   <canvas
     bind:this={canvas}
-    class:cursor-move={hoveredPointIndex !== -1}
     class="h-full aspect-square"
-    on:mousedown={startDragging}
-    on:mouseup={endDragging}
     on:mousemove={handleMove}
-    on:click={createPointOnClick}
-    on:click={selectHoveredPoint}
+    on:click={handleClick}
   />
 </div>

@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { derived, writable } from "svelte/store";
 
 export type Point = { x: number; y: number };
 export type Obj = {
@@ -10,7 +10,8 @@ export const selection = writable<number>(-1);
 export const points = writable<Point[]>([]);
 export const objects = writable<Obj[]>([]);
 
-export const activeShape = writable<Obj["type"]>("arc");
+export type Tool = Obj["type"] | "select";
+export const activeTool = writable<Tool>("select");
 
 const _formatRef = {
   points: [

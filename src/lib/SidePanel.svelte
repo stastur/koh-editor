@@ -1,15 +1,15 @@
 <script lang="ts">
-  import { activeShape, type Obj } from "./store";
+  import { activeTool, type Tool } from "./store";
 
-  const types: Array<Obj["type"]> = ["arc", "polygon", "position"];
+  const tools: Array<Tool> = ["select", "arc", "polygon", "position"];
 </script>
 
 <fieldset class="flex flex-col">
   <legend>Current type</legend>
 
-  {#each types as t}
+  {#each tools as t}
     <label>
-      <input id={t} type="radio" value={t} bind:group={$activeShape} />
+      <input id={t} type="radio" value={t} bind:group={$activeTool} />
       {t}
     </label>
   {/each}
