@@ -135,9 +135,20 @@
         editing.points.push(startPointIndex);
         $editingElement = -1;
       } else {
-        const newPointIndex = $points.push(cursorPosition) - 1;
+        const existingPointIndex = $points.findIndex((p) => {
+          if (distance(cursorPosition, p) < 5) {
+            return true;
+          }
 
-        editing.points.push(newPointIndex);
+          return false;
+        });
+
+        const nextPointIndex =
+          existingPointIndex !== -1
+            ? existingPointIndex
+            : $points.push(cursorPosition) - 1;
+
+        editing.points.push(nextPointIndex);
       }
     }
 
