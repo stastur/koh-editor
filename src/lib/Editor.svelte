@@ -22,6 +22,8 @@
 
   let rc: RoughCanvas;
 
+  let dragging = false;
+
   onMount(() => {
     canvas.width = width * devicePixelRatio;
     canvas.height = height * devicePixelRatio;
@@ -55,11 +57,39 @@
 
   const objectPoints = (o: Obj) => o.points.map((i) => $points[i]);
 
+  let handleMouseDown = () => {
+    if ($selection !== -1) {
+      dragging = true;
+    }
+  };
+
+  let handleMouseUp = () => {
+    if ($selection !== -1) {
+      dragging = false;
+    }
+  };
+
   $: handleMove = (e: MouseEvent) => {
     const cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
 
+    if (dragging) {
+      const selectedObj = $objects[$selection];
+
+      const draggingIndex = selectedObj.points.find(
+        (i) => distance($points[i], cursorPosition) < 5
+      );
+
+      if (draggingIndex !== undefined) {
+        points.update((self) => {
+          self[draggingIndex] = cursorPosition;
+          return self;
+        });
+      }
+    }
+
     if ($activeTool === "select") {
       hoveredElement.update(() => -1);
+
       $objects.map((o, i) => {
         const [start, ...coords] = objectPoints(o);
 
@@ -124,8 +154,10 @@
 
     $objects.forEach((o, i) => {
       const options: Options = {};
+      const selected = $selection === i;
+      const hovered = $hoveredElement === i;
 
-      if ($hoveredElement === i || $selection === i) {
+      if (selected || hovered) {
         options.stroke = "blue";
       }
 
@@ -138,6 +170,12 @@
         const coords = o.points.map((i) => $points[i]);
 
         rc.linearPath(coords.map(toTuple), options);
+
+        if (selected) {
+          coords.forEach((p) =>
+            rc.circle(...toTuple(p), 8, { fill: "white", fillStyle: "solid" })
+          );
+        }
       }
     });
   }
@@ -156,6 +194,8 @@
   <canvas
     bind:this={canvas}
     class="h-full aspect-square"
+    on:mouseup={handleMouseUp}
+    on:mousedown={handleMouseDown}
     on:mousemove={handleMove}
     on:click={handleClick}
   />
