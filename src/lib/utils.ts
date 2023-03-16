@@ -1,4 +1,5 @@
 import type { Point } from "./store";
+import type { Point as RoughPoint } from "roughjs/bin/geometry";
 
 type Line = [Point, Point];
 
@@ -47,4 +48,24 @@ export function closestLinePoint(p: Point, l: Line) {
 
 export function distanceToLine(p: Point, line: Line) {
   return distance(p, closestLinePoint(p, line));
+}
+
+export function isCloseToPolyline(p: Point, polyline: Point[], delta = 5) {
+  if (polyline.length < 2) {
+    return false;
+  }
+
+  for (let i = 0; i < polyline.length - 1; i++) {
+    const segment: Line = [polyline[i], polyline[i + 1]];
+
+    if (distanceToLine(p, segment) < delta) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+export function toTuple({ x, y }: Point) {
+  return [x, y] satisfies RoughPoint;
 }

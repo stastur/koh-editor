@@ -1,7 +1,7 @@
 <script lang="ts">
   import { activeTool, type Tool } from "./store";
 
-  const tools: Array<Tool> = ["select", "arc", "polygon", "position"];
+  const tools: Array<Tool> = ["select", "arc", "position"];
 </script>
 
 <fieldset class="flex flex-col">
