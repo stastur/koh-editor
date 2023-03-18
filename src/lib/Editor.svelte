@@ -3,6 +3,7 @@
   import type { RoughCanvas } from "roughjs/bin/canvas";
   import type { Options } from "roughjs/bin/core";
   import { onMount } from "svelte";
+  import { newArc, newArcPoint, newPosition } from "./actions";
   import {
     activeTool,
     editingElement,
@@ -69,7 +70,7 @@
     }
   };
 
-  $: handleMove = (e: MouseEvent) => {
+  const handleMove = (e: MouseEvent) => {
     const cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
 
     if (dragging) {
@@ -91,16 +92,16 @@
       hoveredElement.update(() => -1);
 
       $objects.map((o, i) => {
-        const [start, ...coords] = objectPoints(o);
+        const [first, ...coords] = objectPoints(o);
 
         if (o.type === "position") {
-          if (distance(cursorPosition, start) < 5) {
+          if (distance(cursorPosition, first) < 5) {
             hoveredElement.update(() => i);
           }
         }
 
         if (o.type === "arc") {
-          if (isCloseToPolyline(cursorPosition, [start, ...coords])) {
+          if (isCloseToPolyline(cursorPosition, [first, ...coords])) {
             hoveredElement.update(() => i);
           }
         }
@@ -108,56 +109,30 @@
     }
   };
 
-  $: handleClick = (e: MouseEvent) => {
+  const handleClick = (e: MouseEvent) => {
     const cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
 
     if ($activeTool === "position") {
-      const pointIndex = $points.length;
-      const position: Obj = { type: "position", points: [pointIndex] };
-
-      $points.push(cursorPosition);
-      $objects.push(position);
+      newPosition(cursorPosition);
     }
 
     if ($activeTool === "arc") {
       if ($editingElement === -1) {
         $editingElement = $objects.length;
-        $objects.push({ type: "arc", points: [] });
+        newArc();
       }
 
-      const editing = $objects[$editingElement];
-      const startPointIndex = editing.points.at(0);
+      newArcPoint($editingElement, cursorPosition);
 
-      if (
-        startPointIndex !== undefined &&
-        distance(cursorPosition, $points[startPointIndex]) < 5
-      ) {
-        editing.points.push(startPointIndex);
+      const { points } = $objects[$editingElement];
+      if (points.length >= 2 && points.at(0) === points.at(-1)) {
         $editingElement = -1;
-      } else {
-        const existingPointIndex = $points.findIndex((p) => {
-          if (distance(cursorPosition, p) < 5) {
-            return true;
-          }
-
-          return false;
-        });
-
-        const nextPointIndex =
-          existingPointIndex !== -1
-            ? existingPointIndex
-            : $points.push(cursorPosition) - 1;
-
-        editing.points.push(nextPointIndex);
       }
     }
 
     if ($activeTool === "select") {
       $selection = $hoveredElement;
     }
-
-    $points = $points;
-    $objects = $objects;
   };
 
   $: if (ctx) {
