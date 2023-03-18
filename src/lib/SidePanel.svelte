@@ -8,7 +8,7 @@
   const arcs = derived(objects, ($objects) => $objects.filter((o) => o.type));
 </script>
 
-<div>
+<div class="flex flex-col items-start gap-2">
   <fieldset class="flex flex-col">
     <legend>Current type</legend>
 

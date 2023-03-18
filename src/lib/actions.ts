@@ -2,8 +2,10 @@ import { get } from "svelte/store";
 import { editingElement, objects, points, type Point } from "./store";
 import { adjacentChunks, distance, distortLine } from "./utils";
 
-const createKey = (start: number, end: number) => `${start}_${end}` as const;
-type Key = ReturnType<typeof createKey>;
+type Key = `${number}_${number}`;
+
+const createKey = (start: number, end: number) => `${start}_${end}` as Key;
+const reverseKey = (k: Key) => k.split("_").reverse().join("_") as Key;
 
 export function distortEdges() {
   const lineDistortion = new Map<Key, number[]>();
@@ -17,8 +19,11 @@ export function distortEdges() {
       const distortedPoints = adjacentChunks(o.points, 2).flatMap((chunk) => {
         const [s, e] = chunk;
         const k = createKey(s, e);
+        const rk = reverseKey(k);
 
-        if (!lineDistortion.has(k)) {
+        const cached = lineDistortion.has(k) || lineDistortion.has(rk);
+
+        if (!cached) {
           const $points = get(points);
 
           const newPoints = distortLine([$points[s], $points[e]]).slice(1, -1);
@@ -32,7 +37,10 @@ export function distortEdges() {
           );
         }
 
-        return [s, ...(lineDistortion.get(k) || []), e];
+        const indices =
+          lineDistortion.get(k) || lineDistortion.get(rk)?.reverse();
+
+        return [s, ...(indices || []), e];
       });
 
       return { ...o, points: distortedPoints };

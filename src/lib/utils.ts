@@ -79,13 +79,12 @@ export function middlePoint(l: Line) {
   return { x, y };
 }
 
-export function distortLine(
-  l: Line,
-  options = { density: 1, minDistance: 10 }
-): Point[] {
+export type DistortOptions = { minDistance: number };
+
+export function distortLine(l: Line, options = { minDistance: 10 }): Point[] {
   const [s, e] = l;
 
-  if (distance(s, e) * options.density < options.minDistance) {
+  if (distance(s, e) < options.minDistance) {
     return l;
   }
 
