@@ -23,6 +23,7 @@
 
   let rc: RoughCanvas;
 
+  let cursorPosition = { x: 0, y: 0 };
   let dragging = false;
 
   onMount(() => {
@@ -71,13 +72,20 @@
   };
 
   const handleMove = (e: MouseEvent) => {
-    const cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
+    cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
+
+    if (!dragging) {
+      const closePoint = $points.find((p) => distance(p, cursorPosition) < 10);
+      if (closePoint) {
+        cursorPosition = closePoint;
+      }
+    }
 
     if (dragging) {
       const selectedObj = $objects[$selection];
 
       const draggingIndex = selectedObj.points.find(
-        (i) => distance($points[i], cursorPosition) < 5
+        (i) => distance($points[i], cursorPosition) < 10
       );
 
       if (draggingIndex !== undefined) {
@@ -109,9 +117,7 @@
     }
   };
 
-  const handleClick = (e: MouseEvent) => {
-    const cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
-
+  const handleClick = () => {
     if ($activeTool === "position") {
       newPosition(cursorPosition);
     }
@@ -154,6 +160,10 @@
 
       if (o.type === "arc") {
         const coords = o.points.map((i) => $points[i]);
+
+        if ($editingElement === i) {
+          coords.push(cursorPosition);
+        }
 
         rc.linearPath(coords.map(toTuple), options);
 
