@@ -79,12 +79,15 @@ export function middlePoint(l: Line) {
   return { x, y };
 }
 
-export function distortLine(l: Line, times = 4): Point[] {
-  if (times === 0) {
+export function distortLine(
+  l: Line,
+  options = { density: 1, minDistance: 10 }
+): Point[] {
+  const [s, e] = l;
+
+  if (distance(s, e) * options.density < options.minDistance) {
     return l;
   }
-
-  const [s, e] = l;
 
   const middle = middlePoint(l);
 
@@ -92,7 +95,19 @@ export function distortLine(l: Line, times = 4): Point[] {
   middle.y += Math.random() * 5 - 5;
 
   return [
-    ...distortLine([s, middle], times - 1),
-    ...distortLine([middle, e], times - 1),
+    ...distortLine([s, middle], options),
+    ...distortLine([middle, e], options).slice(1),
   ];
+}
+
+export function adjacentChunks<T>(arr: T[], size: number) {
+  const result: T[][] = [];
+
+  for (let i = 0; i < arr.length - size; i += size - 1) {
+    result.push(arr.slice(i, i + size));
+  }
+
+  result.push(arr.slice(result.length * (size - 1)));
+
+  return result;
 }
