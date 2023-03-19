@@ -4,7 +4,7 @@
   import type { Options } from "roughjs/bin/core";
   import { onMount } from "svelte";
   import { deleteObject, newArc, newArcPoint, newPosition } from "./actions";
-  import { MouseButtons } from "./constants";
+  import { CursorType, MouseButtons } from "./constants";
   import {
     activeTool,
     editingElement,
@@ -14,8 +14,9 @@
     selection,
     type Obj,
     type Point,
+    type Tool,
   } from "./store";
-  import { distance, isCloseToPolyline, toTuple } from "./utils";
+  import { distance, isCloseToPolyline, toScene, toTuple } from "./utils";
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -27,6 +28,15 @@
   let cursorPosition = { x: 0, y: 0 };
   let dragging = false;
 
+  const cursorsForTool: Record<Tool, string> = {
+    arc: CursorType.crosshair,
+    hand: CursorType.grab,
+    select: CursorType.auto,
+    position: CursorType.crosshair,
+  };
+
+  $: cursor = cursorsForTool[$activeTool];
+
   onMount(() => {
     canvas.width = width * devicePixelRatio;
     canvas.height = height * devicePixelRatio;
@@ -36,22 +46,6 @@
     rc = r.canvas(canvas, { options: { seed: 420, roughness: 0 } });
   });
 
-  const toScene = (
-    p: Point,
-    target: { width: number; height: number },
-    source: { width: number; height: number }
-  ) => {
-    const canvasPoint = { ...p };
-
-    canvasPoint.x *= target.width / source.width;
-    canvasPoint.y *= target.height / source.height;
-
-    canvasPoint.x = Math.floor(canvasPoint.x);
-    canvasPoint.y = Math.floor(canvasPoint.y);
-
-    return canvasPoint;
-  };
-
   const toCanvas = (p: Point) =>
     toScene(p, canvas, canvas.getBoundingClientRect());
 
@@ -60,27 +54,7 @@
 
   const objectPoints = (o: Obj) => o.points.map((i) => $points[i]);
 
-  let handleMouseDown = (e: MouseEvent) => {
-    if (e.button !== MouseButtons.left) {
-      return;
-    }
-
-    if ($selection !== -1) {
-      dragging = true;
-    }
-  };
-
-  let handleMouseUp = (e: MouseEvent) => {
-    if (e.button !== MouseButtons.left) {
-      return;
-    }
-
-    if ($selection !== -1) {
-      dragging = false;
-    }
-  };
-
-  const handleMove = (e: MouseEvent) => {
+  function handleMove(e: MouseEvent) {
     cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
 
     if (!dragging) {
@@ -124,9 +98,33 @@
         }
       });
     }
-  };
+  }
 
-  const handleClick = () => {
+  function handleMouseDown(e: MouseEvent) {
+    if (e.button !== MouseButtons.main) {
+      return;
+    }
+
+    if ($activeTool === "hand") {
+      cursor = CursorType.grabbing;
+    }
+
+    if ($selection !== -1) {
+      dragging = true;
+    }
+  }
+
+  function handleMouseUp(e: MouseEvent) {
+    if (e.button !== MouseButtons.main) {
+      return;
+    }
+
+    dragging = false;
+
+    if ($activeTool === "hand") {
+      cursor = CursorType.grab;
+    }
+
     if ($activeTool === "position") {
       newPosition(cursorPosition);
     }
@@ -148,7 +146,7 @@
     if ($activeTool === "select") {
       $selection = $hoveredElement;
     }
-  };
+  }
 
   $: if (ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -185,7 +183,7 @@
     });
   }
 
-  const clearFocus = () => {
+  function clearFocus() {
     if ($editingElement !== -1) {
       const editing = $objects[$editingElement];
 
@@ -196,9 +194,9 @@
 
     $selection = -1;
     $editingElement = -1;
-  };
+  }
 
-  const handleKeys = (e: KeyboardEvent) => {
+  function handleKeyUp(e: KeyboardEvent) {
     if (e.key === "Escape") {
       clearFocus();
     }
@@ -210,20 +208,19 @@
         $editingElement = -1;
       }
     }
-  };
+  }
 </script>
 
-<svelte:body on:keyup|self={handleKeys} />
+<svelte:body on:keyup|self={handleKeyUp} />
 
 <div class="h-fill m-2 relative border-black border-2">
   <canvas
     bind:this={canvas}
     class="h-full aspect-square"
-    class:cursor-crosshair={$activeTool !== "select"}
+    style:cursor
     on:contextmenu|preventDefault={clearFocus}
     on:mouseup={handleMouseUp}
     on:mousedown={handleMouseDown}
     on:mousemove={handleMove}
-    on:click={handleClick}
   />
 </div>

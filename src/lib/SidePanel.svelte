@@ -15,7 +15,7 @@
     type Tool,
   } from "./store";
 
-  const tools: Array<Tool> = ["select", "arc", "position"];
+  const tools: Array<Tool> = ["hand", "select", "arc", "position"];
   const arcs = derived(objects, ($objects) => $objects.filter((o) => o.type));
 
   $: element = $selection !== -1 ? $objects[$selection] : null;

@@ -114,3 +114,19 @@ export function adjacentChunks<T>(arr: T[], size: number) {
 export function unique<T>(arr: T[]) {
   return [...new Set(arr)];
 }
+
+export function toScene(
+  p: Point,
+  target: { width: number; height: number },
+  source: { width: number; height: number }
+) {
+  const projection = { ...p };
+
+  projection.x *= target.width / source.width;
+  projection.y *= target.height / source.height;
+
+  projection.x = Math.floor(projection.x);
+  projection.y = Math.floor(projection.y);
+
+  return projection;
+}
