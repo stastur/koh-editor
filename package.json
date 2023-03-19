@@ -24,6 +24,7 @@
     "vite": "^4.2.0"
   },
   "dependencies": {
-    "roughjs": "^4.5.2"
+    "roughjs": "^4.5.2",
+    "zod": "^3.21.4"
   }
 }

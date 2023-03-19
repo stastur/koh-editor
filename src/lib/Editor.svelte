@@ -204,7 +204,7 @@
   };
 </script>
 
-<svelte:window on:keyup={handleKeys} />
+<svelte:body on:keyup|self={handleKeys} />
 
 <div class="h-fill m-2 relative border-black border-2">
   <canvas

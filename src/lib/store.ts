@@ -1,4 +1,4 @@
-import { writable } from "svelte/store";
+import { derived, writable } from "svelte/store";
 
 export type Point = { x: number; y: number };
 
@@ -17,3 +17,11 @@ export const activeTool = writable<Tool>("select");
 export const selection = writable(-1);
 export const editingElement = writable(-1);
 export const hoveredElement = writable(-1);
+
+export const exportLink = derived([points, objects], ([$points, $objects]) => {
+  const topology = { points: $points, objects: $objects };
+  const json = JSON.stringify(topology, null, 2);
+  const blob = new Blob([json], { type: "application/json" });
+
+  return URL.createObjectURL(blob);
+});

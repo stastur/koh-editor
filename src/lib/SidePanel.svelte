@@ -1,11 +1,17 @@
 <script lang="ts">
   import { derived } from "svelte/store";
-  import { deleteObject, distortEdges } from "./actions";
+  import {
+    deleteObject,
+    distortEdges,
+    importTopology,
+    newObjectProp,
+  } from "./actions";
   import {
     activeTool,
     editingElement,
     objects,
     selection,
+    exportLink,
     type Tool,
   } from "./store";
 
@@ -18,15 +24,14 @@
 
   const addProp = () => {
     if (element) {
-      element.properties = {
-        ...element.properties,
-        [newProp.key]: newProp.value,
-      };
+      newObjectProp($selection, [newProp.key, newProp.value]);
 
       newProp.key = "";
       newProp.value = "";
     }
   };
+
+  let fileInput: HTMLInputElement;
 </script>
 
 <div class="flex flex-col items-start gap-2">
@@ -75,7 +80,7 @@
               </span>:
               <span
                 contenteditable
-                bind:textContent={element.properties[key]}
+                bind:textContent={$objects[$selection].properties[key]}
               />
             </div>
           {/each}
@@ -106,6 +111,33 @@
       </fieldset>
     </div>
   {/if}
+
+  <div class="flex gap-2">
+    <a
+      class="py-1 px-4 rounded-md bg-gray-100"
+      href={$exportLink}
+      download="topology.json"
+    >
+      Export
+    </a>
+
+    <input
+      type="file"
+      accept=".json"
+      hidden
+      bind:this={fileInput}
+      on:change={(e) => {
+        const file = e.currentTarget.files?.[0];
+        file?.text().then(importTopology);
+      }}
+    />
+    <button
+      class="py-1 px-4 rounded-md bg-gray-100"
+      on:click={() => fileInput.click()}
+    >
+      Import
+    </button>
+  </div>
 </div>
 
 <style lang="postcss">

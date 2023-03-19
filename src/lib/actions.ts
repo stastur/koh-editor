@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { get } from "svelte/store";
 import { editingElement, objects, points, type Point } from "./store";
 import { adjacentChunks, distance, distortLine, unique } from "./utils";
@@ -114,4 +115,37 @@ export function deleteObject(index: number) {
       return { ...o, points: shiftedPoints };
     });
   });
+}
+
+export function newObjectProp(
+  objIndex: number,
+  [key, value]: [string, string]
+) {
+  objects.update(($objects) => {
+    $objects[objIndex].properties[key] = value;
+
+    return $objects;
+  });
+}
+
+const TopoSchema = z.object({
+  points: z.object({ x: z.number(), y: z.number() }).array(),
+  objects: z
+    .object({
+      type: z.enum(["arc", "position"]),
+      points: z.number().array(),
+      properties: z.record(z.string()).default({}),
+    })
+    .array(),
+});
+
+export function importTopology(json: string) {
+  try {
+    const parsed = TopoSchema.parse(JSON.parse(json));
+
+    points.update(() => parsed.points);
+    objects.update(() => parsed.objects);
+  } catch (e) {
+    alert((e as Error).message);
+  }
 }
