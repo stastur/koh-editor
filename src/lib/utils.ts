@@ -79,8 +79,6 @@ export function middlePoint(l: Line) {
   return { x, y };
 }
 
-export type DistortOptions = { minDistance: number };
-
 export function distortLine(l: Line, options = { minDistance: 10 }): Point[] {
   const [s, e] = l;
 

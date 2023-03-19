@@ -17,32 +17,41 @@ export function distortEdges() {
         return o;
       }
 
-      const distortedPoints = adjacentChunks(o.points, 2).flatMap((chunk) => {
-        const [s, e] = chunk;
-        const k = createKey(s, e);
-        const rk = reverseKey(k);
+      const distortedPoints = adjacentChunks(o.points, 2).flatMap(
+        (chunk, i, arr) => {
+          const [s, e] = chunk;
+          const k = createKey(s, e);
+          const rk = reverseKey(k);
 
-        const cached = lineDistortion.has(k) || lineDistortion.has(rk);
+          const cached = lineDistortion.has(k) || lineDistortion.has(rk);
 
-        if (!cached) {
-          const $points = get(points);
+          if (!cached) {
+            const $points = get(points);
+            const newPoints = distortLine([$points[s], $points[e]]).slice(
+              1,
+              -1
+            );
+            const startIndex = $points.length;
 
-          const newPoints = distortLine([$points[s], $points[e]]).slice(1, -1);
-          const startIndex = $points.length;
+            points.update((self) => [...self, ...newPoints]);
 
-          points.update((self) => [...self, ...newPoints]);
+            lineDistortion.set(
+              k,
+              newPoints.map((_, i) => i + startIndex)
+            );
+          }
 
-          lineDistortion.set(
-            k,
-            newPoints.map((_, i) => i + startIndex)
-          );
+          const indices =
+            lineDistortion.get(k) || lineDistortion.get(rk)?.reverse();
+
+          const distorted = [s, ...(indices || []), e];
+
+          const isLastChunk = i === arr.length - 1;
+          !isLastChunk && distorted.pop();
+
+          return distorted;
         }
-
-        const indices =
-          lineDistortion.get(k) || lineDistortion.get(rk)?.reverse();
-
-        return [s, ...(indices || []), e];
-      });
+      );
 
       return { ...o, points: distortedPoints };
     })
