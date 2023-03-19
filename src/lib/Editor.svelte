@@ -4,6 +4,7 @@
   import type { Options } from "roughjs/bin/core";
   import { onMount } from "svelte";
   import { deleteObject, newArc, newArcPoint, newPosition } from "./actions";
+  import { MouseButtons } from "./constants";
   import {
     activeTool,
     editingElement,
@@ -59,13 +60,21 @@
 
   const objectPoints = (o: Obj) => o.points.map((i) => $points[i]);
 
-  let handleMouseDown = () => {
+  let handleMouseDown = (e: MouseEvent) => {
+    if (e.button !== MouseButtons.left) {
+      return;
+    }
+
     if ($selection !== -1) {
       dragging = true;
     }
   };
 
-  let handleMouseUp = () => {
+  let handleMouseUp = (e: MouseEvent) => {
+    if (e.button !== MouseButtons.left) {
+      return;
+    }
+
     if ($selection !== -1) {
       dragging = false;
     }
