@@ -55,13 +55,16 @@ export function newPosition(point: Point) {
   points.update((self) => [...self, point]);
   objects.update((self) => [
     ...self,
-    { type: "position", points: [insertedAt] },
+    { type: "position", points: [insertedAt], properties: {} },
   ]);
 }
 
 export function newArc() {
   editingElement.update(() => get(objects).length);
-  objects.update((self) => [...self, { type: "arc", points: [] }]);
+  objects.update((self) => [
+    ...self,
+    { type: "arc", points: [], properties: {} },
+  ]);
 }
 
 export function newArcPoint(arcIndex: number, newPoint: Point) {

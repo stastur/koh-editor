@@ -190,6 +190,7 @@
   <canvas
     bind:this={canvas}
     class="h-full aspect-square"
+    class:cursor-crosshair={$activeTool !== "select"}
     on:mouseup={handleMouseUp}
     on:mousedown={handleMouseDown}
     on:mousemove={handleMove}
