@@ -1,6 +1,6 @@
 import { get } from "svelte/store";
 import { editingElement, objects, points, type Point } from "./store";
-import { adjacentChunks, distance, distortLine } from "./utils";
+import { adjacentChunks, distance, distortLine, unique } from "./utils";
 
 type Key = `${number}_${number}`;
 
@@ -89,5 +89,29 @@ export function newArcPoint(arcIndex: number, newPoint: Point) {
     arc.points.push(pointIndex);
 
     return self;
+  });
+}
+
+export function deleteObject(index: number) {
+  objects.update(($objects) => {
+    const [deleted] = $objects.splice(index, 1);
+
+    const orphaned = unique(deleted.points).filter((pi) =>
+      $objects.every((o) => !o.points.includes(pi))
+    );
+
+    points.update(($points) => $points.filter((_, i) => !orphaned.includes(i)));
+
+    return $objects.map((o) => {
+      const shiftedPoints = o.points.map((oldIndex) => {
+        return orphaned.reduce(
+          (shiftedIndex, orphanedIndex) =>
+            shiftedIndex - Number(oldIndex > orphanedIndex),
+          oldIndex
+        );
+      });
+
+      return { ...o, points: shiftedPoints };
+    });
   });
 }

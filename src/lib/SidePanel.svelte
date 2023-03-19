@@ -1,7 +1,13 @@
 <script lang="ts">
   import { derived } from "svelte/store";
-  import { distortEdges } from "./actions";
-  import { activeTool, objects, selection, type Tool } from "./store";
+  import { deleteObject, distortEdges } from "./actions";
+  import {
+    activeTool,
+    editingElement,
+    objects,
+    selection,
+    type Tool,
+  } from "./store";
 
   const tools: Array<Tool> = ["select", "arc", "position"];
   const arcs = derived(objects, ($objects) => $objects.filter((o) => o.type));
@@ -39,11 +45,24 @@
     <button
       class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed"
       disabled={$arcs.length === 0}
-      on:click={distortEdges}>Distort edges</button
+      on:click={distortEdges}
     >
+      Distort edges
+    </button>
   </div>
 
   {#if element}
+    <button
+      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed"
+      on:click={() => {
+        deleteObject($selection);
+        $selection = -1;
+        $editingElement = -1;
+      }}
+    >
+      Delete
+    </button>
+
     <div>
       <fieldset class="flex flex-col items-start gap-2">
         <legend>Properties</legend>

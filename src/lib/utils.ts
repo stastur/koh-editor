@@ -110,3 +110,7 @@ export function adjacentChunks<T>(arr: T[], size: number) {
 
   return result;
 }
+
+export function unique<T>(arr: T[]) {
+  return [...new Set(arr)];
+}

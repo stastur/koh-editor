@@ -3,7 +3,7 @@
   import type { RoughCanvas } from "roughjs/bin/canvas";
   import type { Options } from "roughjs/bin/core";
   import { onMount } from "svelte";
-  import { newArc, newArcPoint, newPosition } from "./actions";
+  import { deleteObject, newArc, newArcPoint, newPosition } from "./actions";
   import {
     activeTool,
     editingElement,
@@ -176,10 +176,30 @@
     });
   }
 
+  const clearFocus = () => {
+    if ($editingElement !== -1) {
+      const editing = $objects[$editingElement];
+
+      if (editing.type === "arc" && editing.points.length === 1) {
+        deleteObject($editingElement);
+      }
+    }
+
+    $selection = -1;
+    $editingElement = -1;
+  };
+
   const handleKeys = (e: KeyboardEvent) => {
     if (e.key === "Escape") {
-      $selection = -1;
-      $editingElement = -1;
+      clearFocus();
+    }
+
+    if (e.key === "Delete" || e.key === "Backspace") {
+      if ($selection !== -1) {
+        deleteObject($selection);
+        $selection = -1;
+        $editingElement = -1;
+      }
     }
   };
 </script>
@@ -191,6 +211,7 @@
     bind:this={canvas}
     class="h-full aspect-square"
     class:cursor-crosshair={$activeTool !== "select"}
+    on:contextmenu|preventDefault={clearFocus}
     on:mouseup={handleMouseUp}
     on:mousedown={handleMouseDown}
     on:mousemove={handleMove}
