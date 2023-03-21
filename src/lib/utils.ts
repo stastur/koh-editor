@@ -7,6 +7,14 @@ export function clamp(value: number, min: number, max: number) {
   return Math.min(Math.max(min, value), max);
 }
 
+export function add(a: Point, b: Point): Point {
+  return { x: a.x + b.x, y: a.y + b.y };
+}
+
+export function subtract(a: Point, b: Point): Point {
+  return { x: a.x - b.x, y: a.y - b.y };
+}
+
 export function distance(from: Point, to: Point): number {
   return Math.hypot(to.x - from.x, to.y - from.y);
 }
@@ -123,8 +131,9 @@ export function toScene(
   projection.x *= target.width / source.width;
   projection.y *= target.height / source.height;
 
-  projection.x = Math.floor(projection.x);
-  projection.y = Math.floor(projection.y);
-
   return projection;
+}
+
+export function roundPoint({ x, y }: Point) {
+  return { x: Math.floor(x), y: Math.floor(y) };
 }

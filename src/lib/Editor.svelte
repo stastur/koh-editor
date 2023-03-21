@@ -16,7 +16,15 @@
     type Point,
     type Tool,
   } from "./store";
-  import { distance, isCloseToPolyline, toScene, toTuple } from "./utils";
+  import {
+    distance,
+    isCloseToPolyline,
+    roundPoint,
+    subtract,
+    toScene,
+    toTuple,
+    add,
+  } from "./utils";
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -25,8 +33,10 @@
 
   let rc: RoughCanvas;
 
+  let viewport = { x: 0, y: 0, w: width, h: height };
   let cursorPosition = { x: 0, y: 0 };
   let dragging = false;
+  let isPanning = false;
 
   const cursorsForTool: Record<Tool, string> = {
     arc: CursorType.crosshair,
@@ -55,7 +65,9 @@
   const objectPoints = (o: Obj) => o.points.map((i) => $points[i]);
 
   function handleMove(e: MouseEvent) {
-    cursorPosition = toCanvas({ x: e.offsetX, y: e.offsetY });
+    cursorPosition = roundPoint(
+      subtract(toCanvas({ x: e.offsetX, y: e.offsetY }), viewport)
+    );
 
     if (!dragging) {
       const closePoint = $points.find((p) => distance(p, cursorPosition) < 10);
@@ -98,6 +110,13 @@
         }
       });
     }
+
+    if ($activeTool === "hand" && isPanning) {
+      const delta = toCanvas({ x: e.movementX, y: e.movementY });
+
+      viewport.x += delta.x;
+      viewport.y += delta.y;
+    }
   }
 
   function handleMouseDown(e: MouseEvent) {
@@ -106,6 +125,7 @@
     }
 
     if ($activeTool === "hand") {
+      isPanning = true;
       cursor = CursorType.grabbing;
     }
 
@@ -119,6 +139,7 @@
       return;
     }
 
+    isPanning = false;
     dragging = false;
 
     if ($activeTool === "hand") {
@@ -151,6 +172,10 @@
   $: if (ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    rc.rectangle(viewport.x, viewport.y, viewport.w, viewport.h, {
+      stroke: "#fca5a5",
+    });
+
     $objects.forEach((o, i) => {
       const options: Options = {};
       const selected = $selection === i;
@@ -162,7 +187,7 @@
 
       if (o.type === "position") {
         const p = $points[o.points[0]];
-        rc.circle(p.x, p.y, 5, options);
+        rc.circle(...toTuple(add(p, viewport)), 5, options);
       }
 
       if (o.type === "arc") {
@@ -172,11 +197,17 @@
           coords.push(cursorPosition);
         }
 
-        rc.linearPath(coords.map(toTuple), options);
+        rc.linearPath(
+          coords.map((p) => toTuple(add(p, viewport))),
+          options
+        );
 
         if (selected) {
           coords.forEach((p) =>
-            rc.circle(...toTuple(p), 8, { fill: "white", fillStyle: "solid" })
+            rc.circle(...toTuple(add(p, viewport)), 8, {
+              fill: "white",
+              fillStyle: "solid",
+            })
           );
         }
       }
