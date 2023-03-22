@@ -24,6 +24,7 @@
     toScene,
     toTuple,
     add,
+    clamp,
   } from "./utils";
 
   let canvas: HTMLCanvasElement;
@@ -37,6 +38,7 @@
   let cursorPosition = { x: 0, y: 0 };
   let dragging = false;
   let isPanning = false;
+  let zoom = 1;
 
   const cursorsForTool: Record<Tool, string> = {
     arc: CursorType.crosshair,
@@ -240,6 +242,12 @@
       }
     }
   }
+
+  function handleMouseWheel(e: WheelEvent) {
+    const newZoom = Number((zoom + Math.sign(e.deltaY) * 1).toPrecision(2));
+
+    zoom = clamp(newZoom, 1, 8);
+  }
 </script>
 
 <svelte:body on:keyup|self={handleKeyUp} />
@@ -253,5 +261,7 @@
     on:mouseup={handleMouseUp}
     on:mousedown={handleMouseDown}
     on:mousemove={handleMove}
+    on:wheel={handleMouseWheel}
   />
+  <div class="absolute m-4 p-2 left-0 bottom-0">{zoom * 100}%</div>
 </div>

@@ -15,6 +15,14 @@ export function subtract(a: Point, b: Point): Point {
   return { x: a.x - b.x, y: a.y - b.y };
 }
 
+export function multiply(p: Point, f: number): Point {
+  return { x: p.x * f, y: p.y * f };
+}
+
+export function divide(p: Point, f: number): Point {
+  return multiply(p, 1 / f);
+}
+
 export function distance(from: Point, to: Point): number {
   return Math.hypot(to.x - from.x, to.y - from.y);
 }
