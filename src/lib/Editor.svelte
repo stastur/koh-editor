@@ -12,7 +12,6 @@
     objects,
     points,
     selection,
-    type Obj,
     type Point,
     type Tool,
   } from "./store";
@@ -25,6 +24,8 @@
     toTuple,
     add,
     clamp,
+    multiply,
+    divide,
   } from "./utils";
 
   let canvas: HTMLCanvasElement;
@@ -36,7 +37,7 @@
 
   let viewport = { x: 0, y: 0, w: width, h: height };
   let cursorPosition = { x: 0, y: 0 };
-  let dragging = false;
+  let isDragging = false;
   let isPanning = false;
   let zoom = 1;
 
@@ -48,6 +49,7 @@
   };
 
   $: cursor = cursorsForTool[$activeTool];
+  $: viewportPoints = $points.map((p) => add(multiply(p, zoom), viewport));
 
   onMount(() => {
     canvas.width = width * devicePixelRatio;
@@ -58,27 +60,31 @@
     rc = r.canvas(canvas, { options: { seed: 420, roughness: 0 } });
   });
 
-  const toCanvas = (p: Point) =>
+  const elementToCanvasCoords = (p: Point) =>
     toScene(p, canvas, canvas.getBoundingClientRect());
 
-  const fromCanvas = (p: Point) =>
+  const canvasToElementCoords = (p: Point) =>
     toScene(p, canvas.getBoundingClientRect(), canvas);
-
-  const objectPoints = (o: Obj) => o.points.map((i) => $points[i]);
 
   function handleMove(e: MouseEvent) {
     cursorPosition = roundPoint(
-      subtract(toCanvas({ x: e.offsetX, y: e.offsetY }), viewport)
+      divide(
+        subtract(
+          elementToCanvasCoords({ x: e.offsetX, y: e.offsetY }),
+          viewport
+        ),
+        zoom
+      )
     );
 
-    if (!dragging) {
+    if (!isDragging) {
       const closePoint = $points.find((p) => distance(p, cursorPosition) < 10);
       if (closePoint) {
         cursorPosition = closePoint;
       }
     }
 
-    if (dragging) {
+    if (isDragging) {
       const selectedObj = $objects[$selection];
 
       const draggingIndex = selectedObj.points.find(
@@ -97,7 +103,7 @@
       hoveredElement.update(() => -1);
 
       $objects.map((o, i) => {
-        const [first, ...coords] = objectPoints(o);
+        const [first, ...coords] = o.points.map((i) => $points[i]);
 
         if (o.type === "position") {
           if (distance(cursorPosition, first) < 5) {
@@ -114,10 +120,11 @@
     }
 
     if ($activeTool === "hand" && isPanning) {
-      const delta = toCanvas({ x: e.movementX, y: e.movementY });
+      const delta = elementToCanvasCoords({ x: e.movementX, y: e.movementY });
 
-      viewport.x += delta.x;
-      viewport.y += delta.y;
+      viewport = { ...viewport, ...add(viewport, delta) };
+      viewport.x = clamp(viewport.x, width - viewport.w * zoom, 0);
+      viewport.y = clamp(viewport.y, height - viewport.h * zoom, 0);
     }
   }
 
@@ -132,7 +139,7 @@
     }
 
     if ($selection !== -1) {
-      dragging = true;
+      isDragging = true;
     }
   }
 
@@ -142,7 +149,7 @@
     }
 
     isPanning = false;
-    dragging = false;
+    isDragging = false;
 
     if ($activeTool === "hand") {
       cursor = CursorType.grab;
@@ -174,10 +181,6 @@
   $: if (ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    rc.rectangle(viewport.x, viewport.y, viewport.w, viewport.h, {
-      stroke: "#fca5a5",
-    });
-
     $objects.forEach((o, i) => {
       const options: Options = {};
       const selected = $selection === i;
@@ -188,25 +191,25 @@
       }
 
       if (o.type === "position") {
-        const p = $points[o.points[0]];
-        rc.circle(...toTuple(add(p, viewport)), 5, options);
+        const p = viewportPoints[o.points[0]];
+        rc.circle(...toTuple(p), 5, options);
       }
 
       if (o.type === "arc") {
-        const coords = o.points.map((i) => $points[i]);
+        const coords = o.points.map((i) => viewportPoints[i]);
 
         if ($editingElement === i) {
           coords.push(cursorPosition);
         }
 
         rc.linearPath(
-          coords.map((p) => toTuple(add(p, viewport))),
+          coords.map((p) => toTuple(p)),
           options
         );
 
         if (selected) {
           coords.forEach((p) =>
-            rc.circle(...toTuple(add(p, viewport)), 8, {
+            rc.circle(...toTuple(p), 8, {
               fill: "white",
               fillStyle: "solid",
             })
