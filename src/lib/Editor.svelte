@@ -2,6 +2,7 @@
   import r from "roughjs";
   import type { RoughCanvas } from "roughjs/bin/canvas";
   import type { Options } from "roughjs/bin/core";
+  import { P, match } from "ts-pattern";
   import { onMount } from "svelte";
   import { deleteObject, newArc, newArcPoint, newPosition } from "./actions";
   import { CursorType, MouseButtons } from "./constants";
@@ -234,25 +235,18 @@
   }
 
   function handleKeyDown(e: KeyboardEvent) {
-    if (e.key === "Escape") {
-      clearFocus();
-    }
-
-    if (e.metaKey && e.key === "z") {
-      if (e.shiftKey) {
-        changes.redo();
-      } else {
-        changes.undo();
-      }
-    }
-
-    if (e.key === "Delete" || e.key === "Backspace") {
-      if ($selection !== -1) {
-        deleteObject($selection);
-        $selection = -1;
-        $editingElement = -1;
-      }
-    }
+    match(e)
+      .with({ key: "Escape" }, () => clearFocus())
+      .with({ key: P.union("Delete", "Backspace") }, () => {
+        if ($selection !== -1) {
+          deleteObject($selection);
+          $selection = -1;
+          $editingElement = -1;
+        }
+      })
+      .with({ metaKey: true, shiftKey: true, key: "z" }, () => changes.redo())
+      .with({ metaKey: true, key: "z" }, () => changes.undo())
+      .otherwise(() => {});
   }
 
   function handleMouseWheel(e: WheelEvent) {
