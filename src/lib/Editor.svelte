@@ -14,6 +14,7 @@
     selection,
     type Point,
     type Tool,
+    changes,
   } from "./store";
   import {
     distance,
@@ -224,7 +225,7 @@
       const editing = $objects[$editingElement];
 
       if (editing.type === "arc" && editing.points.length === 1) {
-        deleteObject($editingElement);
+        () => deleteObject($editingElement);
       }
     }
 
@@ -232,9 +233,17 @@
     $editingElement = -1;
   }
 
-  function handleKeyUp(e: KeyboardEvent) {
+  function handleKeyDown(e: KeyboardEvent) {
     if (e.key === "Escape") {
       clearFocus();
+    }
+
+    if (e.metaKey && e.key === "z") {
+      if (e.shiftKey) {
+        changes.redo();
+      } else {
+        changes.undo();
+      }
     }
 
     if (e.key === "Delete" || e.key === "Backspace") {
@@ -253,7 +262,7 @@
   }
 </script>
 
-<svelte:body on:keyup|self={handleKeyUp} />
+<svelte:body on:keydown|self={handleKeyDown} />
 
 <div class="h-fill m-2 relative border-black border-2">
   <canvas
@@ -266,5 +275,18 @@
     on:mousemove={handleMove}
     on:wheel={handleMouseWheel}
   />
-  <div class="absolute m-4 p-2 left-0 bottom-0">{zoom * 100}%</div>
+  <div class="absolute m-4 p-2 left-0 bottom-0">
+    <span>{zoom * 100}%</span>
+    <button
+      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+      disabled={$changes.first}
+      on:click={changes.undo}>undo</button
+    >
+    |
+    <button
+      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+      disabled={$changes.last}
+      on:click={changes.redo}>redo</button
+    >
+  </div>
 </div>

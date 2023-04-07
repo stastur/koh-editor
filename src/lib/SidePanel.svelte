@@ -13,6 +13,7 @@
     selection,
     exportLink,
     type Tool,
+    changes,
   } from "./store";
 
   const tools: Array<Tool> = ["hand", "select", "arc", "position"];
@@ -48,9 +49,9 @@
 
   <div>
     <button
-      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed"
+      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
       disabled={$arcs.length === 0}
-      on:click={distortEdges}
+      on:click={() => changes.push(distortEdges)}
     >
       Distort edges
     </button>
@@ -58,7 +59,7 @@
 
   {#if element}
     <button
-      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed"
+      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
       on:click={() => {
         deleteObject($selection);
         $selection = -1;
@@ -102,7 +103,7 @@
         </div>
 
         <button
-          class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed"
+          class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
           disabled={!newProp.value && !newProp.value}
           on:click={addProp}
         >

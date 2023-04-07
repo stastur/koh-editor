@@ -1,6 +1,12 @@
 import { z } from "zod";
 import { get } from "svelte/store";
-import { editingElement, objects, points, type Point } from "./store";
+import {
+  editingElement,
+  objects,
+  points,
+  type Point,
+  reversible,
+} from "./store";
 import { adjacentChunks, distance, distortLine, unique } from "./utils";
 
 type Key = `${number}_${number}`;
@@ -8,7 +14,7 @@ type Key = `${number}_${number}`;
 const createKey = (start: number, end: number) => `${start}_${end}` as Key;
 const reverseKey = (k: Key) => k.split("_").reverse().join("_") as Key;
 
-export function distortEdges() {
+export const distortEdges = reversible(() => {
   const lineDistortion = new Map<Key, number[]>();
 
   objects.update((self) =>
@@ -56,9 +62,9 @@ export function distortEdges() {
       return { ...o, points: distortedPoints };
     })
   );
-}
+});
 
-export function newPosition(point: Point) {
+export const newPosition = reversible((point: Point) => {
   const $points = get(points);
   const insertedAt = $points.length;
 
@@ -67,17 +73,17 @@ export function newPosition(point: Point) {
     ...self,
     { type: "position", points: [insertedAt], properties: {} },
   ]);
-}
+});
 
-export function newArc() {
+export const newArc = reversible(() => {
   editingElement.update(() => get(objects).length);
   objects.update((self) => [
     ...self,
     { type: "arc", points: [], properties: {} },
   ]);
-}
+});
 
-export function newArcPoint(arcIndex: number, newPoint: Point) {
+export const newArcPoint = reversible((arcIndex: number, newPoint: Point) => {
   const $points = get(points);
 
   objects.update((self) => {
@@ -100,9 +106,9 @@ export function newArcPoint(arcIndex: number, newPoint: Point) {
 
     return self;
   });
-}
+});
 
-export function deleteObject(index: number) {
+export const deleteObject = reversible((index: number) => {
   objects.update(($objects) => {
     const [deleted] = $objects.splice(index, 1);
 
@@ -124,7 +130,7 @@ export function deleteObject(index: number) {
       return { ...o, points: shiftedPoints };
     });
   });
-}
+});
 
 export function newObjectProp(
   objIndex: number,
