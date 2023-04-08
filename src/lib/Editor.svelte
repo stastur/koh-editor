@@ -201,7 +201,7 @@
         const coords = o.points.map((i) => viewportPoints[i]);
 
         if ($editingElement === i) {
-          coords.push(cursorPosition);
+          coords.push(add(multiply(cursorPosition, zoom), viewport));
         }
 
         rc.linearPath(
