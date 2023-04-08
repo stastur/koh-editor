@@ -1,4 +1,8 @@
 import { derived, get, writable } from "svelte/store";
+import { enablePatches, applyPatches, produce } from "immer";
+import type { Patch, Objectish, Draft } from "immer/dist/internal";
+
+enablePatches();
 
 export type Point = { x: number; y: number };
 
@@ -8,9 +12,6 @@ export type Obj = {
   properties: Record<string, string>;
 };
 
-export const points = writable<Point[]>([]);
-export const objects = writable<Obj[]>([]);
-
 export type Tool = Obj["type"] | "select" | "hand";
 export const activeTool = writable<Tool>("select");
 
@@ -18,76 +19,77 @@ export const selection = writable(-1);
 export const editingElement = writable(-1);
 export const hoveredElement = writable(-1);
 
-export const exportLink = derived([points, objects], ([$points, $objects]) => {
-  const topology = { points: $points, objects: $objects };
+export const state = createState({
+  objects: [] as Obj[],
+  points: [] as Point[],
+});
+
+export const exportLink = derived(state, ({ points, objects }) => {
+  const topology = { points, objects };
   const json = JSON.stringify(topology, null, 2);
   const blob = new Blob([json], { type: "application/json" });
 
   return URL.createObjectURL(blob);
 });
 
-class History<T> {
-  stack = [] as T[];
-  index = -1;
+function createState<T extends Objectish>(initial: T) {
+  const state = writable(initial);
+  const redoState = writable({ canUndo: false, canRedo: false });
 
-  state = writable({ last: true, first: true });
+  const changes: { redo: Patch[]; undo: Patch[] }[] = [];
+  let version = 0;
 
-  constructor(
-    private takeSnapshot: () => T,
-    private apply: (value: T) => void
-  ) {
-    this.index = 0;
-    this.stack.push(structuredClone(this.takeSnapshot()));
-    this.state.set({ last: true, first: true });
-  }
+  const update = (producer: (draft: Draft<T>) => void, tracking = true) =>
+    state.set(
+      produce(
+        get(state),
+        (draft) => {
+          producer(draft);
+        },
+        (patches, inversePatches) => {
+          if (!tracking) return;
 
-  subscribe = this.state.subscribe;
+          if (!changes.at(version)) {
+            changes.push({ redo: [], undo: [] });
+          }
 
-  #update() {
-    this.state.set({
-      last: this.index === this.stack.length - 1,
-      first: this.index === 0,
+          const change = changes.at(version)!;
+          change.redo.push(...patches);
+          change.undo.unshift(...inversePatches);
+        }
+      )
+    );
+
+  const syncStatus = () => {
+    redoState.set({
+      canUndo: version > 0,
+      canRedo: version < changes.length,
     });
-  }
+  };
 
-  push(fn: () => void) {
-    fn();
-    const snapshot: T = structuredClone(this.takeSnapshot());
-    this.stack.length = ++this.index;
-    this.stack.push(snapshot);
-    this.#update();
-  }
+  const commit = () => {
+    if (changes.at(version)?.redo.length) {
+      version++;
+      changes.length = version;
+      syncStatus();
+    }
+  };
 
-  current() {
-    return this.stack[this.index];
-  }
+  const undo = () => {
+    if (version > 0) {
+      version--;
+      state.set(applyPatches(get(state), changes[version].undo));
+      syncStatus();
+    }
+  };
 
-  undo() {
-    this.index = Math.max(0, this.index - 1);
-    this.apply(this.current());
-    this.#update();
-  }
+  const redo = () => {
+    if (version < changes.length) {
+      state.set(applyPatches(get(state), changes[version].redo));
+      version++;
+      syncStatus();
+    }
+  };
 
-  redo() {
-    this.index = Math.min(this.stack.length - 1, this.index + 1);
-    this.apply(this.current());
-    this.#update();
-  }
+  return { subscribe: state.subscribe, update, undo, redo, commit, redoState };
 }
-
-export const changes = new History(
-  () => ({
-    points: get(points),
-    objects: get(objects),
-  }),
-  (snapshot) => {
-    points.set(snapshot.points);
-    objects.set(snapshot.objects);
-  }
-);
-
-export const reversible = <TArgs extends unknown[]>(
-  fn: (...args: TArgs) => void
-) => {
-  return (...args: TArgs) => changes.push(() => fn(...args));
-};

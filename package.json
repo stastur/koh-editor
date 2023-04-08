@@ -24,6 +24,7 @@
     "vite": "^4.2.1"
   },
   "dependencies": {
+    "immer": "^9.0.21",
     "roughjs": "^4.5.2",
     "ts-pattern": "^4.2.2",
     "zod": "^3.21.4"

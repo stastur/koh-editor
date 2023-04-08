@@ -10,12 +10,10 @@
     activeTool,
     editingElement,
     hoveredElement,
-    objects,
-    points,
     selection,
+    state,
     type Point,
     type Tool,
-    changes,
   } from "./store";
   import {
     distance,
@@ -29,6 +27,7 @@
     multiply,
     divide,
   } from "./utils";
+  import { derived } from "svelte/store";
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -43,6 +42,9 @@
   let isPanning = false;
   let zoom = 1;
 
+  $: canUndo = derived(state.redoState, (s) => s.canUndo);
+  $: canRedo = derived(state.redoState, (s) => s.canRedo);
+
   const cursorsForTool: Record<Tool, string> = {
     arc: CursorType.crosshair,
     hand: CursorType.grab,
@@ -51,7 +53,9 @@
   };
 
   $: cursor = cursorsForTool[$activeTool];
-  $: viewportPoints = $points.map((p) => add(multiply(p, zoom), viewport));
+  $: viewportPoints = $state.points.map((p) =>
+    add(multiply(p, zoom), viewport)
+  );
 
   onMount(() => {
     canvas.width = width * devicePixelRatio;
@@ -80,32 +84,31 @@
     );
 
     if (!isDragging) {
-      const closePoint = $points.find((p) => distance(p, cursorPosition) < 10);
+      const closePoint = $state.points.find(
+        (p) => distance(p, cursorPosition) < 10
+      );
       if (closePoint) {
         cursorPosition = closePoint;
       }
     }
 
     if (isDragging) {
-      const selectedObj = $objects[$selection];
+      const selectedObj = $state.objects[$selection];
 
       const draggingIndex = selectedObj.points.find(
-        (i) => distance($points[i], cursorPosition) < 10
+        (i) => distance($state.points[i], cursorPosition) < 10
       );
 
       if (draggingIndex !== undefined) {
-        points.update((self) => {
-          self[draggingIndex] = cursorPosition;
-          return self;
-        });
+        state.update(({ points }) => (points[draggingIndex] = cursorPosition));
       }
     }
 
     if ($activeTool === "select") {
       hoveredElement.update(() => -1);
 
-      $objects.map((o, i) => {
-        const [first, ...coords] = o.points.map((i) => $points[i]);
+      $state.objects.map((o, i) => {
+        const [first, ...coords] = o.points.map((i) => $state.points[i]);
 
         if (o.type === "position") {
           if (distance(cursorPosition, first) < 5) {
@@ -150,6 +153,10 @@
       return;
     }
 
+    if (isDragging) {
+      state.commit();
+    }
+
     isPanning = false;
     isDragging = false;
 
@@ -159,20 +166,23 @@
 
     if ($activeTool === "position") {
       newPosition(cursorPosition);
+      state.commit();
     }
 
     if ($activeTool === "arc") {
       if ($editingElement === -1) {
-        $editingElement = $objects.length;
+        $editingElement = $state.objects.length;
         newArc();
       }
 
       newArcPoint($editingElement, cursorPosition);
 
-      const { points } = $objects[$editingElement];
+      const { points } = $state.objects[$editingElement];
       if (points.length >= 2 && points.at(0) === points.at(-1)) {
         $editingElement = -1;
       }
+
+      state.commit();
     }
 
     if ($activeTool === "select") {
@@ -183,7 +193,7 @@
   $: if (ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    $objects.forEach((o, i) => {
+    $state.objects.forEach((o, i) => {
       const options: Options = {};
       const selected = $selection === i;
       const hovered = $hoveredElement === i;
@@ -223,7 +233,7 @@
 
   function clearFocus() {
     if ($editingElement !== -1) {
-      const editing = $objects[$editingElement];
+      const editing = $state.objects[$editingElement];
 
       if (editing.type === "arc" && editing.points.length === 1) {
         () => deleteObject($editingElement);
@@ -242,10 +252,11 @@
           deleteObject($selection);
           $selection = -1;
           $editingElement = -1;
+          state.commit();
         }
       })
-      .with({ metaKey: true, shiftKey: true, key: "z" }, () => changes.redo())
-      .with({ metaKey: true, key: "z" }, () => changes.undo())
+      .with({ metaKey: true, shiftKey: true, key: "z" }, () => state.redo())
+      .with({ metaKey: true, key: "z" }, () => state.undo())
       .otherwise(() => {});
   }
 
@@ -271,12 +282,8 @@
   />
   <div class="absolute m-4 p-2 left-0 bottom-0">
     <span>{zoom * 100}%</span>
-    <button class="btn" disabled={$changes.first} on:click={changes.undo}
-      >undo</button
-    >
+    <button class="btn" disabled={!$canUndo} on:click={state.undo}>undo</button>
     |
-    <button class="btn" disabled={$changes.last} on:click={changes.redo}
-      >redo</button
-    >
+    <button class="btn" disabled={!$canRedo} on:click={state.redo}>redo</button>
   </div>
 </div>

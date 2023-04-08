@@ -1,26 +1,20 @@
 import { z } from "zod";
-import { get } from "svelte/store";
-import {
-  editingElement,
-  objects,
-  points,
-  type Point,
-  reversible,
-} from "./store";
+import { editingElement, type Point } from "./store";
 import { adjacentChunks, distance, distortLine, unique } from "./utils";
+import { state } from "./store";
 
 type Key = `${number}_${number}`;
 
 const createKey = (start: number, end: number) => `${start}_${end}` as Key;
 const reverseKey = (k: Key) => k.split("_").reverse().join("_") as Key;
 
-export const distortEdges = reversible(() => {
+export const distortEdges = () => {
   const lineDistortion = new Map<Key, number[]>();
 
-  objects.update((self) =>
-    self.map((o) => {
+  state.update(({ objects, points }) =>
+    objects.forEach((o) => {
       if (o.points.length < 2) {
-        return o;
+        return;
       }
 
       const distortedPoints = adjacentChunks(o.points, 2).flatMap(
@@ -32,14 +26,10 @@ export const distortEdges = reversible(() => {
           const cached = lineDistortion.has(k) || lineDistortion.has(rk);
 
           if (!cached) {
-            const $points = get(points);
-            const newPoints = distortLine([$points[s], $points[e]]).slice(
-              1,
-              -1
-            );
-            const startIndex = $points.length;
+            const newPoints = distortLine([points[s], points[e]]).slice(1, -1);
+            const startIndex = points.length;
 
-            points.update((self) => [...self, ...newPoints]);
+            points.push(...newPoints);
 
             lineDistortion.set(
               k,
@@ -59,66 +49,61 @@ export const distortEdges = reversible(() => {
         }
       );
 
-      return { ...o, points: distortedPoints };
+      o.points = distortedPoints;
     })
   );
-});
+};
 
-export const newPosition = reversible((point: Point) => {
-  const $points = get(points);
-  const insertedAt = $points.length;
+export const newPosition = (point: Point) => {
+  state.update(({ objects, points }) => {
+    const insertedAt = points.length;
 
-  points.update((self) => [...self, point]);
-  objects.update((self) => [
-    ...self,
-    { type: "position", points: [insertedAt], properties: {} },
-  ]);
-});
+    points.push(point);
+    objects.push({ type: "position", points: [insertedAt], properties: {} });
+  });
+};
 
-export const newArc = reversible(() => {
-  editingElement.update(() => get(objects).length);
-  objects.update((self) => [
-    ...self,
-    { type: "arc", points: [], properties: {} },
-  ]);
-});
+export const newArc = () => {
+  state.update(({ objects }) => {
+    editingElement.update(() => objects.length);
+    objects.push({ type: "arc", points: [], properties: {} });
+  });
+};
 
-export const newArcPoint = reversible((arcIndex: number, newPoint: Point) => {
-  const $points = get(points);
-
-  objects.update((self) => {
-    const arc = self.at(arcIndex);
+export const newArcPoint = (arcIndex: number, newPoint: Point) => {
+  state.update(({ objects, points }) => {
+    const arc = objects.at(arcIndex);
 
     if (!arc) {
-      return self;
+      return objects;
     }
 
-    let pointIndex = $points.findIndex(
+    let pointIndex = points.findIndex(
       (existing) => distance(existing, newPoint) < 10
     );
 
     if (pointIndex === -1) {
-      pointIndex = $points.length;
-      points.update((s) => [...s, newPoint]);
+      pointIndex = points.length;
+      points.push(newPoint);
     }
 
     arc.points.push(pointIndex);
 
-    return self;
+    return objects;
   });
-});
+};
 
-export const deleteObject = reversible((index: number) => {
-  objects.update(($objects) => {
-    const [deleted] = $objects.splice(index, 1);
+export const deleteObject = (index: number) => {
+  state.update(({ objects, points }) => {
+    const [deleted] = objects.splice(index, 1);
 
     const orphaned = unique(deleted.points).filter((pi) =>
-      $objects.every((o) => !o.points.includes(pi))
+      objects.every((o) => !o.points.includes(pi))
     );
 
-    points.update(($points) => $points.filter((_, i) => !orphaned.includes(i)));
+    orphaned.forEach((orphan) => points.splice(orphan, 1));
 
-    return $objects.map((o) => {
+    objects.forEach((o) => {
       const shiftedPoints = o.points.map((oldIndex) => {
         return orphaned.reduce(
           (shiftedIndex, orphanedIndex) =>
@@ -127,20 +112,18 @@ export const deleteObject = reversible((index: number) => {
         );
       });
 
-      return { ...o, points: shiftedPoints };
+      o.points = shiftedPoints;
     });
   });
-});
+};
 
 export function newObjectProp(
   objIndex: number,
   [key, value]: [string, string]
 ) {
-  objects.update(($objects) => {
-    $objects[objIndex].properties[key] = value;
-
-    return $objects;
-  });
+  state.update(({ objects }) => {
+    objects[objIndex].properties[key] = value;
+  }, false);
 }
 
 const TopoSchema = z.object({
@@ -158,8 +141,10 @@ export function importTopology(json: string) {
   try {
     const parsed = TopoSchema.parse(JSON.parse(json));
 
-    points.update(() => parsed.points);
-    objects.update(() => parsed.objects);
+    state.update((draft) => {
+      draft.objects = parsed.objects;
+      draft.points = parsed.points;
+    });
   } catch (e) {
     alert((e as Error).message);
   }

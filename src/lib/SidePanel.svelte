@@ -9,16 +9,18 @@
   import {
     activeTool,
     editingElement,
-    objects,
     selection,
     exportLink,
     type Tool,
   } from "./store";
+  import { state } from "./store";
 
   const tools: Array<Tool> = ["hand", "select", "arc", "position"];
-  const arcs = derived(objects, ($objects) => $objects.filter((o) => o.type));
+  const arcs = derived(state, ({ objects }) =>
+    objects.filter((o) => o.type === "arc")
+  );
 
-  $: element = $selection !== -1 ? $objects[$selection] : null;
+  $: element = $selection !== -1 ? $state.objects[$selection] : null;
 
   const newProp = { key: "", value: "" };
 
@@ -47,7 +49,14 @@
   </fieldset>
 
   <div>
-    <button class="btn" disabled={$arcs.length === 0} on:click={distortEdges}>
+    <button
+      class="btn"
+      disabled={$arcs.length === 0}
+      on:click={() => {
+        distortEdges();
+        state.commit();
+      }}
+    >
       Distort edges
     </button>
   </div>
@@ -59,6 +68,7 @@
         deleteObject($selection);
         $selection = -1;
         $editingElement = -1;
+        state.commit();
       }}
     >
       Delete
@@ -76,7 +86,7 @@
               </span>:
               <span
                 contenteditable
-                bind:textContent={$objects[$selection].properties[key]}
+                bind:textContent={$state.objects[$selection].properties[key]}
               />
             </div>
           {/each}
