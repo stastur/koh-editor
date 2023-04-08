@@ -271,16 +271,12 @@
   />
   <div class="absolute m-4 p-2 left-0 bottom-0">
     <span>{zoom * 100}%</span>
-    <button
-      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
-      disabled={$changes.first}
-      on:click={changes.undo}>undo</button
+    <button class="btn" disabled={$changes.first} on:click={changes.undo}
+      >undo</button
     >
     |
-    <button
-      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
-      disabled={$changes.last}
-      on:click={changes.redo}>redo</button
+    <button class="btn" disabled={$changes.last} on:click={changes.redo}
+      >redo</button
     >
   </div>
 </div>

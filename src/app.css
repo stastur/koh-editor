@@ -12,3 +12,7 @@ body,
 #app {
   display: flex;
 }
+
+.btn {
+  @apply py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400;
+}

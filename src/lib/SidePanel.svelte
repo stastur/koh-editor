@@ -13,7 +13,6 @@
     selection,
     exportLink,
     type Tool,
-    changes,
   } from "./store";
 
   const tools: Array<Tool> = ["hand", "select", "arc", "position"];
@@ -48,18 +47,14 @@
   </fieldset>
 
   <div>
-    <button
-      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
-      disabled={$arcs.length === 0}
-      on:click={() => changes.push(distortEdges)}
-    >
+    <button class="btn" disabled={$arcs.length === 0} on:click={distortEdges}>
       Distort edges
     </button>
   </div>
 
   {#if element}
     <button
-      class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+      class="btn"
       on:click={() => {
         deleteObject($selection);
         $selection = -1;
@@ -103,7 +98,7 @@
         </div>
 
         <button
-          class="py-1 px-4 rounded-md bg-gray-100 disabled:cursor-not-allowed disabled:text-gray-400"
+          class="btn"
           disabled={!newProp.value && !newProp.value}
           on:click={addProp}
         >
@@ -114,13 +109,7 @@
   {/if}
 
   <div class="flex gap-2">
-    <a
-      class="py-1 px-4 rounded-md bg-gray-100"
-      href={$exportLink}
-      download="topology.json"
-    >
-      Export
-    </a>
+    <a class="btn" href={$exportLink} download="topology.json"> Export </a>
 
     <input
       type="file"
@@ -132,12 +121,7 @@
         file?.text().then(importTopology);
       }}
     />
-    <button
-      class="py-1 px-4 rounded-md bg-gray-100"
-      on:click={() => fileInput.click()}
-    >
-      Import
-    </button>
+    <button class="btn" on:click={() => fileInput.click()}> Import </button>
   </div>
 </div>
 
