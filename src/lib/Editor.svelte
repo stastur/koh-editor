@@ -263,8 +263,12 @@
 
   function handleMouseWheel(e: WheelEvent) {
     const newZoom = Number((zoom + Math.sign(e.deltaY) * 1).toPrecision(2));
-
     zoom = clamp(newZoom, 1, 8);
+
+    const offset = subtract(multiply(cursorPosition, zoom), cursorPosition);
+
+    viewport.x = -offset.x;
+    viewport.y = -offset.y;
   }
 </script>
 
