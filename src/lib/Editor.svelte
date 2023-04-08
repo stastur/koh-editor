@@ -83,45 +83,34 @@
       )
     );
 
-    if (!isDragging) {
-      const closePoint = $state.points.find(
-        (p) => distance(p, cursorPosition) < 10
-      );
-      if (closePoint) {
-        cursorPosition = closePoint;
-      }
-    }
-
-    if (isDragging) {
-      const selectedObj = $state.objects[$selection];
-
-      const draggingIndex = selectedObj.points.find(
-        (i) => distance($state.points[i], cursorPosition) < 10
-      );
-
-      if (draggingIndex !== undefined) {
-        state.update(({ points }) => (points[draggingIndex] = cursorPosition));
-      }
-    }
-
     if ($activeTool === "select") {
-      hoveredElement.update(() => -1);
+      if (isDragging) {
+        const selectedObj = $state.objects[$selection];
 
-      $state.objects.map((o, i) => {
-        const [first, ...coords] = o.points.map((i) => $state.points[i]);
+        const draggingIndex = selectedObj.points.find(
+          (i) => distance($state.points[i], cursorPosition) < 10
+        );
 
-        if (o.type === "position") {
-          if (distance(cursorPosition, first) < 5) {
-            hoveredElement.update(() => i);
-          }
+        if (draggingIndex !== undefined) {
+          state.update(
+            ({ points }) => (points[draggingIndex] = cursorPosition)
+          );
         }
+      } else {
+        const elementUnder = $state.objects.findIndex((o) => {
+          const coords = o.points.map((i) => $state.points[i]);
 
-        if (o.type === "arc") {
-          if (isCloseToPolyline(cursorPosition, [first, ...coords])) {
-            hoveredElement.update(() => i);
+          if (o.type === "position") {
+            return distance(cursorPosition, coords[0]) < 5;
           }
-        }
-      });
+
+          if (o.type === "arc") {
+            return isCloseToPolyline(cursorPosition, coords);
+          }
+        });
+
+        hoveredElement.set(elementUnder);
+      }
     }
 
     if ($activeTool === "hand" && isPanning) {
@@ -130,6 +119,15 @@
       viewport = { ...viewport, ...add(viewport, delta) };
       viewport.x = clamp(viewport.x, width - viewport.w * zoom, 0);
       viewport.y = clamp(viewport.y, height - viewport.h * zoom, 0);
+    }
+
+    if ($activeTool === "arc") {
+      const closePoint = $state.points.find(
+        (p) => distance(p, cursorPosition) < 10
+      );
+      if (closePoint) {
+        cursorPosition = closePoint;
+      }
     }
   }
 
@@ -143,8 +141,10 @@
       cursor = CursorType.grabbing;
     }
 
-    if ($selection !== -1) {
-      isDragging = true;
+    if ($activeTool === "select") {
+      if ($selection !== -1) {
+        isDragging = true;
+      }
     }
   }
 
@@ -152,13 +152,6 @@
     if (e.button !== MouseButtons.main) {
       return;
     }
-
-    if (isDragging) {
-      state.commit();
-    }
-
-    isPanning = false;
-    isDragging = false;
 
     if ($activeTool === "hand") {
       cursor = CursorType.grab;
@@ -186,8 +179,15 @@
     }
 
     if ($activeTool === "select") {
-      $selection = $hoveredElement;
+      if (isDragging) {
+        state.commit();
+      } else {
+        $selection = $hoveredElement;
+      }
     }
+
+    isPanning = false;
+    isDragging = false;
   }
 
   $: if (ctx) {
@@ -236,7 +236,8 @@
       const editing = $state.objects[$editingElement];
 
       if (editing.type === "arc" && editing.points.length === 1) {
-        () => deleteObject($editingElement);
+        deleteObject($editingElement);
+        state.commit();
       }
     }
 
