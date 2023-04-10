@@ -1,26 +1,26 @@
-import { derived, writable } from "svelte/store";
+import { writable } from "svelte/store";
 import { History } from "./history";
 import { mouseCursors, toolCursors } from "./constants";
 import type { Obj, Point, Tool } from "./types";
 
-export const zoom = writable(1);
+const zoom = writable(1);
 
-export const selected = writable(-1);
+const selected = writable(-1);
 
-export const viewport = writable({ x: 0, y: 0, width: 0, height: 0 });
+const viewport = writable({ x: 0, y: 0, width: 0, height: 0 });
 
-export const cursor = writable({
+const cursor = writable({
   type: mouseCursors.auto,
   position: { x: 0, y: 0 },
 });
 
-export const activeTool = writable<Tool>("select");
+const activeTool = writable<Tool>("select");
 
-export const points = writable<Point[]>([]);
+const points = writable<Point[]>([]);
 
-export const objects = writable<Obj[]>([]);
+const objects = writable<Obj[]>([]);
 
-export const history = new History([points, objects]);
+const history = new History([points, objects]);
 
 activeTool.subscribe((tool) =>
   cursor.update((cursor) => {
@@ -29,10 +29,15 @@ activeTool.subscribe((tool) =>
   })
 );
 
-export const exportLink = derived([points, objects], ([$points, $objects]) => {
-  const topology = { points: $points, objects: $objects };
-  const json = JSON.stringify(topology, null, 2);
-  const blob = new Blob([json], { type: "application/json" });
+export const appState = {
+  zoom,
+  cursor,
+  viewport,
+  selected,
+  activeTool,
+  points,
+  objects,
+  history,
+};
 
-  return URL.createObjectURL(blob);
-});
+export type AppState = typeof appState;

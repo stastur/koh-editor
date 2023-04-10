@@ -2,21 +2,10 @@
   import r from "roughjs";
   import type { RoughCanvas } from "roughjs/bin/canvas";
   import type { Options } from "roughjs/bin/core";
-  import { P, match } from "ts-pattern";
   import { onMount } from "svelte";
-  import { deleteObject } from "./actions";
   import { toTuple, add, multiply } from "./utils";
   import { Editor, strategies } from "./editor";
-  import {
-    activeTool,
-    cursor,
-    history,
-    objects,
-    points,
-    selected,
-    viewport,
-    zoom,
-  } from "./state";
+  import { appState } from "./state";
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -26,6 +15,16 @@
 
   let rc: RoughCanvas;
 
+  const {
+    activeTool,
+    cursor,
+    history,
+    objects,
+    points,
+    selected,
+    viewport,
+    zoom,
+  } = appState;
   const historyState = history.state;
 
   $: editor && (editor.strategy = strategies[$activeTool]);
@@ -37,7 +36,7 @@
     ctx = canvas.getContext("2d")!;
     ctx.scale(devicePixelRatio, devicePixelRatio);
 
-    editor = new Editor(canvas);
+    editor = new Editor(canvas, appState);
 
     rc = r.canvas(canvas, { options: { seed: 420, roughness: 0 } });
   });

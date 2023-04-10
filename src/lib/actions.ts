@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { adjacentChunks, distance, distortLine, unique } from "./utils";
-import { objects, points } from "./state";
+import { appState } from "./state";
 import { get } from "svelte/store";
 import type { Point } from "./types";
 
@@ -8,6 +8,8 @@ type Key = `${number}_${number}`;
 
 const createKey = (start: number, end: number) => `${start}_${end}` as Key;
 const reverseKey = (k: Key) => k.split("_").reverse().join("_") as Key;
+
+const { objects, points } = appState;
 
 export const distortEdges = () => {
   const lineDistortion = new Map<Key, number[]>();

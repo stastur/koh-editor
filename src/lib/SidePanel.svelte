@@ -1,9 +1,19 @@
 <script lang="ts">
   import { derived } from "svelte/store";
   import { distortEdges, importTopology, newObjectProp } from "./actions";
-  import { activeTool, exportLink, history, objects, selected } from "./state";
+  import { appState } from "./state";
 
   import type { Tool } from "./types";
+
+  const { points, objects, selected, activeTool, history } = appState;
+
+  const exportLink = derived([points, objects], ([$points, $objects]) => {
+    const topology = { points: $points, objects: $objects };
+    const json = JSON.stringify(topology, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+
+    return URL.createObjectURL(blob);
+  });
 
   const tools: Array<Tool> = ["hand", "select", "arc", "position"];
   const numberOfArcs = derived(
