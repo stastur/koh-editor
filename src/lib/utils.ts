@@ -145,3 +145,5 @@ export function toScene(
 export function roundPoint({ x, y }: Point) {
   return { x: Math.floor(x), y: Math.floor(y) };
 }
+
+export const noop = () => {};

@@ -15,12 +15,14 @@ import {
   divide,
   isCloseToPolyline,
   multiply,
+  noop,
   roundPoint,
   subtract,
   toScene,
 } from "./utils";
-import { newArcPoint, newPosition } from "./actions";
+import { deleteObject, newArcPoint, newPosition } from "./actions";
 import type { Point, Tool } from "./types";
+import { match, P } from "ts-pattern";
 
 export const ctx = {
   zoom,
@@ -95,6 +97,15 @@ class ArcStrategy implements ToolStrategy {
 
     history.commit();
   }
+
+  keyDown(event: KeyboardEvent): void {
+    match(event)
+      .with({ key: "Escape" }, () => {
+        deleteObject(this.objIdx);
+        this.objIdx = -1;
+      })
+      .otherwise(noop);
+  }
 }
 
 class PositionStrategy implements ToolStrategy {
@@ -158,6 +169,18 @@ class SelectStrategy implements ToolStrategy {
       this.dragging = draggingIndex ?? -1;
     }
   }
+
+  keyDown(event: KeyboardEvent): void {
+    match(event)
+      .with({ key: P.union("Delete", "Backspace") }, () => {
+        const selected = get(ctx.selected);
+        if (selected !== -1) {
+          deleteObject(selected);
+          history.commit();
+        }
+      })
+      .otherwise(noop);
+  }
 }
 
 export class Editor {
@@ -212,6 +235,11 @@ export class Editor {
   };
 
   onKeyDown = (event: KeyboardEvent) => {
+    match(event)
+      .with({ metaKey: true, shiftKey: true, key: "z" }, history.redo)
+      .with({ metaKey: true, key: "z" }, history.undo)
+      .otherwise(noop);
+
     this.strategy.keyDown?.(event);
   };
 }

@@ -77,22 +77,9 @@
       }
     });
   }
-
-  function handleKeyDown(e: KeyboardEvent) {
-    match(e)
-      .with({ key: P.union("Delete", "Backspace") }, () => {
-        if ($selected !== -1) {
-          deleteObject($selected);
-          history.commit();
-        }
-      })
-      .with({ metaKey: true, shiftKey: true, key: "z" }, () => history.redo())
-      .with({ metaKey: true, key: "z" }, () => history.undo())
-      .otherwise(() => {});
-  }
 </script>
 
-<svelte:body on:keydown|self={handleKeyDown} />
+<svelte:body on:keydown|self={editor.onKeyDown} />
 
 <div class="h-fill m-2 relative border-black border-2">
   <canvas
