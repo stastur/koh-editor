@@ -12,7 +12,6 @@
     context,
     cursor,
     Editor,
-    hovered,
     selected,
     strategies,
     viewport,
@@ -52,9 +51,8 @@
     $state.objects.forEach((o, i) => {
       const options: Options = {};
       const isSelected = $selected === i;
-      const isHovered = $hovered === i;
 
-      if (isSelected || isHovered) {
+      if (isSelected) {
         options.stroke = "blue";
       }
 

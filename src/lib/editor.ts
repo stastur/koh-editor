@@ -15,7 +15,6 @@ import { newArcPoint, newPosition } from "./actions";
 
 export const zoom = writable(1);
 export const selected = writable(-1);
-export const hovered = writable(-1);
 export const viewport = writable({ x: 0, y: 0, width: 0, height: 0 });
 
 export const cursor = writable({
@@ -42,7 +41,6 @@ export const context = {
   cursor,
   viewport,
   selected,
-  hovered,
 };
 
 interface ToolStrategy {
@@ -128,6 +126,7 @@ class PositionStrategy implements ToolStrategy {
 }
 
 class SelectStrategy implements ToolStrategy {
+  hovered = -1;
   dragging = -1;
 
   constructor(private ctx: typeof context) {}
@@ -147,11 +146,10 @@ class SelectStrategy implements ToolStrategy {
       }
     });
 
-    this.ctx.hovered.set(elementUnder);
+    this.hovered = elementUnder;
 
     this.ctx.cursor.update((cursor) => {
-      cursor.type =
-        get(this.ctx.hovered) === -1 ? CursorType.auto : CursorType.pointer;
+      cursor.type = this.hovered === -1 ? CursorType.auto : CursorType.pointer;
       return cursor;
     });
 
@@ -161,7 +159,7 @@ class SelectStrategy implements ToolStrategy {
   }
 
   mouseUp(): void {
-    this.ctx.selected.set(get(this.ctx.hovered));
+    this.ctx.selected.set(this.hovered);
 
     if (this.dragging !== -1) {
       this.dragging = -1;

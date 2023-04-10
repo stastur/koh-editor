@@ -6,27 +6,23 @@
     importTopology,
     newObjectProp,
   } from "./actions";
-  import {
-    activeTool,
-    editingElement,
-    selection,
-    exportLink,
-    type Tool,
-  } from "./store";
+  import { activeTool, exportLink, type Tool } from "./store";
   import { state } from "./store";
+  import { selected } from "./editor";
 
   const tools: Array<Tool> = ["hand", "select", "arc", "position"];
-  const arcs = derived(state, ({ objects }) =>
-    objects.filter((o) => o.type === "arc")
+  const numberOfArcs = derived(
+    state,
+    ({ objects }) => objects.filter((o) => o.type === "arc").length
   );
 
-  $: element = $selection !== -1 ? $state.objects[$selection] : null;
+  $: element = $selected !== -1 ? $state.objects[$selected] : null;
 
   const newProp = { key: "", value: "" };
 
   const addProp = () => {
     if (element) {
-      newObjectProp($selection, [newProp.key, newProp.value]);
+      newObjectProp($selected, [newProp.key, newProp.value]);
 
       newProp.key = "";
       newProp.value = "";
@@ -51,7 +47,7 @@
   <div>
     <button
       class="btn"
-      disabled={$arcs.length === 0}
+      disabled={$numberOfArcs === 0}
       on:click={() => {
         distortEdges();
         state.commit();
@@ -62,18 +58,6 @@
   </div>
 
   {#if element}
-    <button
-      class="btn"
-      on:click={() => {
-        deleteObject($selection);
-        $selection = -1;
-        $editingElement = -1;
-        state.commit();
-      }}
-    >
-      Delete
-    </button>
-
     <div>
       <fieldset class="flex flex-col items-start gap-2">
         <legend>Properties</legend>
@@ -86,7 +70,7 @@
               </span>:
               <span
                 contenteditable
-                bind:textContent={$state.objects[$selection].properties[key]}
+                bind:textContent={$state.objects[$selected].properties[key]}
               />
             </div>
           {/each}
