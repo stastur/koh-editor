@@ -1,6 +1,6 @@
 import { get } from "svelte/store";
 import { appState, type AppState } from "./state";
-import { mouseCursors } from "./constants";
+import { MouseCursors } from "./constants";
 import {
   clamp,
   distance,
@@ -29,7 +29,7 @@ class HandStrategy implements ToolStrategy {
   constructor(private ctx: AppState) {}
 
   mouseMove(cursor: Point, event: MouseEvent) {
-    if (get(this.ctx.cursor).type === mouseCursors.grab) {
+    if (get(this.ctx.cursor).type === MouseCursors.grab) {
       this.previousCursorPosition = cursor;
       return;
     }
@@ -47,14 +47,14 @@ class HandStrategy implements ToolStrategy {
 
   mouseDown() {
     this.ctx.cursor.update((cursor) => {
-      cursor.type = mouseCursors.grabbing;
+      cursor.type = MouseCursors.grabbing;
       return cursor;
     });
   }
 
   mouseUp() {
     this.ctx.cursor.update((cursor) => {
-      cursor.type = mouseCursors.grab;
+      cursor.type = MouseCursors.grab;
       return cursor;
     });
   }
@@ -133,7 +133,7 @@ class SelectStrategy implements ToolStrategy {
 
     this.ctx.cursor.update((cursor) => {
       cursor.type =
-        this.hovered === -1 ? mouseCursors.auto : mouseCursors.pointer;
+        this.hovered === -1 ? MouseCursors.auto : MouseCursors.pointer;
       return cursor;
     });
 

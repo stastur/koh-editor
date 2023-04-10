@@ -1,12 +1,12 @@
 import type { Tool } from "./types";
 
-export const mouseButtons = {
+export const MouseButtons = {
   main: 0,
   wheel: 1,
   secondary: 2,
 };
 
-export const mouseCursors = {
+export const MouseCursors = {
   move: "move",
   grab: "grab",
   pointer: "pointer",
@@ -15,9 +15,9 @@ export const mouseCursors = {
   auto: "",
 };
 
-export const toolCursors: Record<Tool, string> = {
-  arc: mouseCursors.crosshair,
-  hand: mouseCursors.grab,
-  select: mouseCursors.auto,
-  position: mouseCursors.crosshair,
+export const ToolCursors: Record<Tool, string> = {
+  arc: MouseCursors.crosshair,
+  hand: MouseCursors.grab,
+  select: MouseCursors.auto,
+  position: MouseCursors.crosshair,
 };
