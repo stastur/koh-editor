@@ -42,26 +42,26 @@ export class History {
     });
   }
 
-  private update() {
-    this.state.set({
-      canUndo: this.index > 1,
-      canRedo: this.index < this.stack.length - 1,
-    });
-  }
-
   private untrack() {
     this.disposers.forEach((dispose) => dispose());
     this.disposers.clear();
   }
 
+  private update() {
+    this.state.set({
+      canUndo: this.index > 1,
+      canRedo: this.index < this.stack.length,
+    });
+  }
+
   private currentVersion() {
-    return this.stack[this.index - 1];
+    return this.stack.at(this.index - 1);
   }
 
   private applyVersion() {
     this.untrack();
 
-    const version = this.currentVersion();
+    const version = structuredClone(this.currentVersion());
     version &&
       this.tracked.forEach((store, storeIdx) => store.set(version[storeIdx]));
 
@@ -69,7 +69,6 @@ export class History {
   }
 
   commit() {
-    // TODO: fix when editing after few undo's
     this.index++;
     this.stack.length = this.index;
     this.update();
@@ -82,7 +81,7 @@ export class History {
   };
 
   redo = () => {
-    this.index < this.stack.length - 1 && this.index++;
+    this.index < this.stack.length && this.index++;
     this.applyVersion();
     this.update();
   };

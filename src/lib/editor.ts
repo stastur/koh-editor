@@ -1,4 +1,4 @@
-import { get, writable } from "svelte/store";
+import { get } from "svelte/store";
 import {
   points,
   objects,
@@ -124,7 +124,8 @@ class SelectStrategy implements ToolStrategy {
     this.hovered = elementUnder;
 
     ctx.cursor.update((cursor) => {
-      cursor.type = this.hovered === -1 ? mouseCursors.auto : mouseCursors.pointer;
+      cursor.type =
+        this.hovered === -1 ? mouseCursors.auto : mouseCursors.pointer;
       return cursor;
     });
 
