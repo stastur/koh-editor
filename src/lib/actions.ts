@@ -1,7 +1,8 @@
 import { z } from "zod";
-import { editingElement, type Point } from "./store";
 import { adjacentChunks, distance, distortLine, unique } from "./utils";
-import { state } from "./store";
+import { objects, points } from "./state";
+import { get } from "svelte/store";
+import type { Point } from "./types";
 
 type Key = `${number}_${number}`;
 
@@ -11,8 +12,8 @@ const reverseKey = (k: Key) => k.split("_").reverse().join("_") as Key;
 export const distortEdges = () => {
   const lineDistortion = new Map<Key, number[]>();
 
-  state.update(({ objects, points }) =>
-    objects.forEach((o) => {
+  objects.update(($objects) => {
+    $objects.forEach((o) => {
       if (o.points.length < 2) {
         return;
       }
@@ -26,15 +27,22 @@ export const distortEdges = () => {
           const cached = lineDistortion.has(k) || lineDistortion.has(rk);
 
           if (!cached) {
-            const newPoints = distortLine([points[s], points[e]]).slice(1, -1);
-            const startIndex = points.length;
+            points.update(($points) => {
+              const newPoints = distortLine([$points[s], $points[e]]).slice(
+                1,
+                -1
+              );
+              const startIndex = $points.length;
 
-            points.push(...newPoints);
+              $points.push(...newPoints);
 
-            lineDistortion.set(
-              k,
-              newPoints.map((_, i) => i + startIndex)
-            );
+              lineDistortion.set(
+                k,
+                newPoints.map((_, i) => i + startIndex)
+              );
+
+              return $points;
+            });
           }
 
           const indices =
@@ -50,60 +58,75 @@ export const distortEdges = () => {
       );
 
       o.points = distortedPoints;
-    })
-  );
+    });
+
+    return $objects;
+  });
 };
 
 export const newPosition = (point: Point) => {
-  state.update(({ objects, points }) => {
-    const insertedAt = points.length;
+  objects.update(($objects) => {
+    const insertedAt = get(points).length;
 
-    points.push(point);
-    objects.push({ type: "position", points: [insertedAt], properties: {} });
+    points.update(($points) => {
+      $points.push(point);
+      return $points;
+    });
+
+    $objects.push({ type: "position", points: [insertedAt], properties: {} });
+    return $objects;
   });
 };
 
 export const newArc = () => {
-  state.update(({ objects }) => {
-    editingElement.update(() => objects.length);
-    objects.push({ type: "arc", points: [], properties: {} });
+  objects.update(($objects) => {
+    $objects.push({ type: "arc", points: [], properties: {} });
+    return $objects;
   });
 };
 
 export const newArcPoint = (arcIndex: number, newPoint: Point) => {
-  state.update(({ objects, points }) => {
-    const arc = objects.at(arcIndex);
+  objects.update(($objects) => {
+    const arc = $objects.at(arcIndex);
 
     if (!arc) {
-      return objects;
+      return $objects;
     }
 
-    let pointIndex = points.findIndex(
+    let pointIndex = get(points).findIndex(
       (existing) => distance(existing, newPoint) < 10
     );
 
     if (pointIndex === -1) {
-      pointIndex = points.length;
-      points.push(newPoint);
+      pointIndex = get(points).length;
+      points.update(($points) => {
+        $points.push(newPoint);
+        return $points;
+      });
     }
 
     arc.points.push(pointIndex);
 
-    return objects;
+    return $objects;
   });
 };
 
 export const deleteObject = (index: number) => {
-  state.update(({ objects, points }) => {
-    const [deleted] = objects.splice(index, 1);
+  objects.update(($objects) => {
+    const [deleted] = $objects.splice(index, 1);
 
     const orphaned = unique(deleted.points).filter((pi) =>
-      objects.every((o) => !o.points.includes(pi))
+      $objects.every((o) => !o.points.includes(pi))
     );
 
-    orphaned.forEach((orphan) => points.splice(orphan, 1));
+    orphaned.forEach((orphan) =>
+      points.update(($points) => {
+        $points.splice(orphan, 1);
+        return $points;
+      })
+    );
 
-    objects.forEach((o) => {
+    $objects.forEach((o) => {
       const shiftedPoints = o.points.map((oldIndex) => {
         return orphaned.reduce(
           (shiftedIndex, orphanedIndex) =>
@@ -114,6 +137,8 @@ export const deleteObject = (index: number) => {
 
       o.points = shiftedPoints;
     });
+
+    return $objects;
   });
 };
 
@@ -121,9 +146,10 @@ export function newObjectProp(
   objIndex: number,
   [key, value]: [string, string]
 ) {
-  state.update(({ objects }) => {
-    objects[objIndex].properties[key] = value;
-  }, false);
+  objects.update(($objects) => {
+    $objects[objIndex].properties[key] = value;
+    return $objects;
+  });
 }
 
 const TopoSchema = z.object({
@@ -141,10 +167,8 @@ export function importTopology(json: string) {
   try {
     const parsed = TopoSchema.parse(JSON.parse(json));
 
-    state.update((draft) => {
-      draft.objects = parsed.objects;
-      draft.points = parsed.points;
-    });
+    objects.set(parsed.objects);
+    points.set(parsed.points);
   } catch (e) {
     alert((e as Error).message);
   }

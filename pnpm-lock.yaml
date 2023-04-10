@@ -1,9 +1,6 @@
 lockfileVersion: '6.0'
 
 dependencies:
-  immer:
-    specifier: ^9.0.21
-    version: 9.0.21
   roughjs:
     specifier: ^4.5.2
     version: 4.5.2
@@ -597,10 +594,6 @@ packages:
     dependencies:
       function-bind: 1.1.1
     dev: true
-
-  /immer@9.0.21:
-    resolution: {integrity: sha512-bc4NBHqOqSfRW7POMkHd51LvClaeMXpm8dx0e8oE2GORbq5aRK7Bxl4FyzVLdGtLmvLKL7BTDBG5ACQm4HWjTA==}
-    dev: false
 
   /import-fresh@3.3.0:
     resolution: {integrity: sha512-veYYhQa+D1QBKznvhUHxb8faxlrwUnxseDAbAp457E0wLNio2bOSKnjYDhMj+YiAq61xrMGhQk9iXVk5FzgQMw==}

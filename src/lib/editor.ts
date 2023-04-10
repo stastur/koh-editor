@@ -1,6 +1,14 @@
 import { get, writable } from "svelte/store";
-import { state, type Point, type Tool, activeTool } from "./store";
-import { CursorType } from "./constants";
+import {
+  points,
+  objects,
+  history,
+  cursor,
+  selected,
+  viewport,
+  zoom,
+} from "./state";
+import { mouseCursors } from "./constants";
 import {
   clamp,
   distance,
@@ -12,31 +20,9 @@ import {
   toScene,
 } from "./utils";
 import { newArcPoint, newPosition } from "./actions";
+import type { Point, Tool } from "./types";
 
-export const zoom = writable(1);
-export const selected = writable(-1);
-export const viewport = writable({ x: 0, y: 0, width: 0, height: 0 });
-
-export const cursor = writable({
-  type: CursorType.auto,
-  position: { x: 0, y: 0 },
-});
-
-const cursorsForTool: Record<Tool, string> = {
-  arc: CursorType.crosshair,
-  hand: CursorType.grab,
-  select: CursorType.auto,
-  position: CursorType.crosshair,
-};
-
-activeTool.subscribe((tool) =>
-  cursor.update((cursor) => {
-    cursor.type = cursorsForTool[tool];
-    return cursor;
-  })
-);
-
-export const context = {
+export const ctx = {
   zoom,
   cursor,
   viewport,
@@ -53,17 +39,15 @@ interface ToolStrategy {
 class HandStrategy implements ToolStrategy {
   previousCursorPosition = { x: 0, y: 0 };
 
-  constructor(private ctx: typeof context) {}
-
   mouseMove(cursor: Point, event: MouseEvent) {
-    if (get(this.ctx.cursor).type === CursorType.grab) {
+    if (get(ctx.cursor).type === mouseCursors.grab) {
       this.previousCursorPosition = cursor;
       return;
     }
 
     const delta = { x: event.movementX, y: event.movementY };
 
-    this.ctx.viewport.update((viewport) => {
+    ctx.viewport.update((viewport) => {
       viewport.x += delta.x;
       viewport.y += delta.y;
       return viewport;
@@ -73,15 +57,15 @@ class HandStrategy implements ToolStrategy {
   }
 
   mouseDown() {
-    this.ctx.cursor.update((cursor) => {
-      cursor.type = CursorType.grabbing;
+    ctx.cursor.update((cursor) => {
+      cursor.type = mouseCursors.grabbing;
       return cursor;
     });
   }
 
   mouseUp() {
-    this.ctx.cursor.update((cursor) => {
-      cursor.type = CursorType.grab;
+    ctx.cursor.update((cursor) => {
+      cursor.type = mouseCursors.grab;
       return cursor;
     });
   }
@@ -90,38 +74,33 @@ class HandStrategy implements ToolStrategy {
 class ArcStrategy implements ToolStrategy {
   objIdx = -1;
 
-  constructor(private ctx: typeof context) {}
-
   mouseUp(cursor: Point): void {
     if (this.objIdx === -1) {
-      state.update(({ objects }) => {
+      objects.update((objects) => {
         this.objIdx = objects.length;
         objects.push({ type: "arc", points: [], properties: {} });
+        return objects;
       });
     }
 
     newArcPoint(this.objIdx, cursor);
 
-    state.update(({ objects }) => {
-      const arc = objects[this.objIdx];
-      const first = arc.points.at(0);
-      const last = arc.points.at(-1);
+    const arc = get(objects)[this.objIdx];
+    const first = arc.points.at(0);
+    const last = arc.points.at(-1);
 
-      if (arc.points.length > 2 && first === last) {
-        this.objIdx = -1;
-      }
-    });
+    if (arc.points.length > 2 && first === last) {
+      this.objIdx = -1;
+    }
 
-    state.commit();
+    history.commit();
   }
 }
 
 class PositionStrategy implements ToolStrategy {
-  constructor(private ctx: typeof context) {}
-
   mouseUp(cursor: Point): void {
     newPosition(cursor);
-    state.commit();
+    history.commit();
   }
 }
 
@@ -129,13 +108,9 @@ class SelectStrategy implements ToolStrategy {
   hovered = -1;
   dragging = -1;
 
-  constructor(private ctx: typeof context) {}
-
   mouseMove(cursor: Point): void {
-    const { objects, points } = get(state);
-
-    const elementUnder = objects.findIndex((o) => {
-      const coords = o.points.map((i) => points[i]);
+    const elementUnder = get(objects).findIndex((o) => {
+      const coords = o.points.map((i) => get(points)[i]);
 
       if (o.type === "position") {
         return distance(cursor, coords[0]) < 5;
@@ -148,33 +123,35 @@ class SelectStrategy implements ToolStrategy {
 
     this.hovered = elementUnder;
 
-    this.ctx.cursor.update((cursor) => {
-      cursor.type = this.hovered === -1 ? CursorType.auto : CursorType.pointer;
+    ctx.cursor.update((cursor) => {
+      cursor.type = this.hovered === -1 ? mouseCursors.auto : mouseCursors.pointer;
       return cursor;
     });
 
     if (this.dragging !== -1) {
-      state.update(({ points }) => (points[this.dragging] = cursor));
+      points.update((points) => {
+        points[this.dragging] = cursor;
+        return points;
+      });
     }
   }
 
   mouseUp(): void {
-    this.ctx.selected.set(this.hovered);
+    ctx.selected.set(this.hovered);
 
     if (this.dragging !== -1) {
       this.dragging = -1;
-      state.commit();
+      history.commit();
     }
   }
 
   mouseDown(cursor: Point): void {
-    const { objects, points } = get(state);
-    const selected = get(this.ctx.selected);
+    const selected = get(ctx.selected);
 
     if (selected !== -1 && this.dragging === -1) {
-      const selectedObj = objects[selected];
+      const selectedObj = get(objects)[selected];
       const draggingIndex = selectedObj.points.find(
-        (i) => distance(points[i], cursor) < 10
+        (i) => distance(get(points)[i], cursor) < 10
       );
 
       this.dragging = draggingIndex ?? -1;
@@ -185,19 +162,19 @@ class SelectStrategy implements ToolStrategy {
 export class Editor {
   strategy!: ToolStrategy;
 
-  constructor(private canvas: HTMLCanvasElement, private ctx: typeof context) {}
+  constructor(private canvas: HTMLCanvasElement) {}
 
   elementToCanvasCoords = (p: Point) =>
     toScene(p, this.canvas, this.canvas.getBoundingClientRect());
 
   onWheel = ({ deltaY }: WheelEvent) => {
-    this.ctx.zoom.update((zoom) => {
+    ctx.zoom.update((zoom) => {
       const newZoom = Number((zoom + Math.sign(deltaY) * 1).toPrecision(2));
       return clamp(newZoom, 1, 8);
     });
 
-    this.ctx.viewport.update((viewport) => {
-      const cursor = get(this.ctx.cursor).position;
+    ctx.viewport.update((viewport) => {
+      const cursor = get(ctx.cursor).position;
       const offset = subtract(multiply(cursor, get(zoom)), cursor);
 
       viewport.x = -offset.x;
@@ -208,15 +185,15 @@ export class Editor {
   };
 
   onMouseDown = (event: MouseEvent) => {
-    this.strategy.mouseDown?.(get(this.ctx.cursor).position, event);
+    this.strategy.mouseDown?.(get(ctx.cursor).position, event);
   };
 
   onMouseUp = (event: MouseEvent) => {
-    this.strategy.mouseUp?.(get(this.ctx.cursor).position, event);
+    this.strategy.mouseUp?.(get(ctx.cursor).position, event);
   };
 
   onMouseMove = (event: MouseEvent) => {
-    this.ctx.cursor.update((cursor) => {
+    ctx.cursor.update((cursor) => {
       cursor.position = roundPoint(
         divide(
           subtract(
@@ -230,7 +207,7 @@ export class Editor {
       return cursor;
     });
 
-    this.strategy.mouseMove?.(get(this.ctx.cursor).position, event);
+    this.strategy.mouseMove?.(get(ctx.cursor).position, event);
   };
 
   onKeyDown = (event: KeyboardEvent) => {
@@ -239,8 +216,8 @@ export class Editor {
 }
 
 export const strategies: Record<Tool, ToolStrategy> = {
-  arc: new ArcStrategy(context),
-  position: new PositionStrategy(context),
-  select: new SelectStrategy(context),
-  hand: new HandStrategy(context),
+  arc: new ArcStrategy(),
+  position: new PositionStrategy(),
+  select: new SelectStrategy(),
+  hand: new HandStrategy(),
 };

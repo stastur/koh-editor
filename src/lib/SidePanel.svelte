@@ -1,22 +1,17 @@
 <script lang="ts">
   import { derived } from "svelte/store";
-  import {
-    deleteObject,
-    distortEdges,
-    importTopology,
-    newObjectProp,
-  } from "./actions";
-  import { activeTool, exportLink, type Tool } from "./store";
-  import { state } from "./store";
-  import { selected } from "./editor";
+  import { distortEdges, importTopology, newObjectProp } from "./actions";
+  import { activeTool, exportLink, history, objects, selected } from "./state";
+
+  import type { Tool } from "./types";
 
   const tools: Array<Tool> = ["hand", "select", "arc", "position"];
   const numberOfArcs = derived(
-    state,
-    ({ objects }) => objects.filter((o) => o.type === "arc").length
+    objects,
+    ($objects) => $objects.filter((o) => o.type === "arc").length
   );
 
-  $: element = $selected !== -1 ? $state.objects[$selected] : null;
+  $: element = $selected !== -1 ? $objects[$selected] : null;
 
   const newProp = { key: "", value: "" };
 
@@ -50,7 +45,7 @@
       disabled={$numberOfArcs === 0}
       on:click={() => {
         distortEdges();
-        state.commit();
+        history.commit();
       }}
     >
       Distort edges
@@ -70,7 +65,7 @@
               </span>:
               <span
                 contenteditable
-                bind:textContent={$state.objects[$selected].properties[key]}
+                bind:textContent={$objects[$selected].properties[key]}
               />
             </div>
           {/each}

@@ -5,18 +5,18 @@
   import { P, match } from "ts-pattern";
   import { onMount } from "svelte";
   import { deleteObject } from "./actions";
-  import { activeTool, editingElement, selection, state } from "./store";
   import { toTuple, add, multiply } from "./utils";
-  import { derived } from "svelte/store";
+  import { Editor, strategies } from "./editor";
   import {
-    context,
+    activeTool,
     cursor,
-    Editor,
+    history,
+    objects,
+    points,
     selected,
-    strategies,
     viewport,
     zoom,
-  } from "./editor";
+  } from "./state";
 
   let canvas: HTMLCanvasElement;
   let ctx: CanvasRenderingContext2D;
@@ -26,13 +26,10 @@
 
   let rc: RoughCanvas;
 
-  $: canUndo = derived(state.redoState, (s) => s.canUndo);
-  $: canRedo = derived(state.redoState, (s) => s.canRedo);
+  const historyState = history.state;
 
   $: editor && (editor.strategy = strategies[$activeTool]);
-  $: viewportPoints = $state.points.map((p) =>
-    add(multiply(p, $zoom), $viewport)
-  );
+  $: viewportPoints = $points.map((p) => add(multiply(p, $zoom), $viewport));
 
   onMount(() => {
     canvas.width = width * devicePixelRatio;
@@ -40,7 +37,7 @@
     ctx = canvas.getContext("2d")!;
     ctx.scale(devicePixelRatio, devicePixelRatio);
 
-    editor = new Editor(canvas, context);
+    editor = new Editor(canvas);
 
     rc = r.canvas(canvas, { options: { seed: 420, roughness: 0 } });
   });
@@ -48,7 +45,7 @@
   $: if (ctx) {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    $state.objects.forEach((o, i) => {
+    $objects.forEach((o, i) => {
       const options: Options = {};
       const isSelected = $selected === i;
 
@@ -63,10 +60,6 @@
 
       if (o.type === "arc") {
         const coords = o.points.map((i) => viewportPoints[i]);
-
-        if ($editingElement === i) {
-          coords.push(add(multiply($cursor.position, $zoom), $viewport));
-        }
 
         rc.linearPath(
           coords.map((p) => toTuple(p)),
@@ -85,31 +78,16 @@
     });
   }
 
-  function clearFocus() {
-    if ($editingElement !== -1) {
-      const editing = $state.objects[$editingElement];
-
-      if (editing.type === "arc" && editing.points.length === 1) {
-        deleteObject($editingElement);
-        state.commit();
-      }
-    }
-
-    $selection = -1;
-    $editingElement = -1;
-  }
-
   function handleKeyDown(e: KeyboardEvent) {
     match(e)
-      .with({ key: "Escape" }, () => clearFocus())
       .with({ key: P.union("Delete", "Backspace") }, () => {
-        if ($selection !== -1) {
-          deleteObject($selection);
-          state.commit();
+        if ($selected !== -1) {
+          deleteObject($selected);
+          history.commit();
         }
       })
-      .with({ metaKey: true, shiftKey: true, key: "z" }, () => state.redo())
-      .with({ metaKey: true, key: "z" }, () => state.undo())
+      .with({ metaKey: true, shiftKey: true, key: "z" }, () => history.redo())
+      .with({ metaKey: true, key: "z" }, () => history.undo())
       .otherwise(() => {});
   }
 </script>
@@ -121,7 +99,6 @@
     bind:this={canvas}
     class="h-full aspect-square"
     style:cursor={$cursor.type}
-    on:contextmenu|preventDefault={clearFocus}
     on:mousemove={editor.onMouseMove}
     on:mousedown={editor.onMouseDown}
     on:mouseup={editor.onMouseUp}
@@ -129,8 +106,16 @@
   />
   <div class="absolute m-4 p-2 left-0 bottom-0">
     <span>{$zoom * 100}%</span>
-    <button class="btn" disabled={!$canUndo} on:click={state.undo}>undo</button>
+    <button
+      class="btn"
+      disabled={!$historyState.canUndo}
+      on:click={history.undo}>undo</button
+    >
     |
-    <button class="btn" disabled={!$canRedo} on:click={state.redo}>redo</button>
+    <button
+      class="btn"
+      disabled={!$historyState.canRedo}
+      on:click={history.redo}>redo</button
+    >
   </div>
 </div>

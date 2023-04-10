@@ -1,4 +1,4 @@
-import type { Point } from "./store";
+import type { Point } from "./types";
 import type { Point as RoughPoint } from "roughjs/bin/geometry";
 
 type Line = [Point, Point];
